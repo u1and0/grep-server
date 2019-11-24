@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"net/http"
 	"os/exec"
 	"regexp"
@@ -12,6 +13,7 @@ import (
 // そのディレクトリと検索語をハイライトした文字列を入れる
 type PathMap struct {
 	File      string
+	Line      string
 	Dir       string
 	Highlight string
 }
@@ -34,7 +36,7 @@ func process(w http.ResponseWriter, r *http.Request) {
 	// コマンド生成
 	searchWord := "file"
 	// `rg -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rg", searchWord).Output()
+	out, err := exec.Command("rg", "-n", searchWord).Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -42,18 +44,26 @@ func process(w http.ResponseWriter, r *http.Request) {
 	outstr := string(out)
 	fmt.Println(outstr)
 	results := strings.Split(outstr, "\n")
+	results = results[:len(results)-1] // Pop last element cause \\n
+
+	var pm []PathMap
 	for _, r := range results {
+		spl := strings.SplitN(r, ":", -1)
+		fmt.Println(spl)
+		pm = append(pm, PathMap{File: spl[0], Line: spl[1], Highlight: spl[2]}) //strings.Join(spl[2:], "")})
+	}
+	fmt.Println(pm)
+	for _, p := range pm {
 		fmt.Fprintf(w,
 			`
 			<tr>
-				<td>
-				%s
-				</td>
+				<td> %s </td>
+				<td> %s </td>
+				<td> %s </td>
 			</tr>
-		`, highlightFilename( // ファイル名リンク化
-				highlightString(r, []string{searchWord}), // 検索ワードハイライト
-				[]string{"[^:]*"},
-			),
+		`, highlightFilename(p.File, []string{".+"}),
+			p.Line,
+			highlightString(html.EscapeString(p.Highlight), []string{searchWord}), // 検索ワードハイライト
 		)
 	}
 
