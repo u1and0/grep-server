@@ -34,9 +34,9 @@ func htmlClause(s string) string {
 func process(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlClause(""))
 	// コマンド生成
-	searchWord := "file"
+	searchWord := "file [a-z]+"
 	// `rg -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rg", "-n", searchWord).Output()
+	out, err := exec.Command("rg", "-n", "--heading", searchWord, "/home/vagrant/Dropbox/Document/").Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -46,26 +46,37 @@ func process(w http.ResponseWriter, r *http.Request) {
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
-	var pm []PathMap
+	// --headingの場合
+	match := regexp.MustCompile(`^\d`)
 	for _, r := range results {
-		spl := strings.SplitN(r, ":", -1)
-		fmt.Println(spl)
-		pm = append(pm, PathMap{File: spl[0], Line: spl[1], Highlight: spl[2]}) //strings.Join(spl[2:], "")})
+		if match.MatchString(r) {
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), []string{searchWord}))
+		} else {
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r, []string{".*"}))
+		}
 	}
-	fmt.Println(pm)
-	for _, p := range pm {
-		fmt.Fprintf(w,
-			`
-			<tr>
-				<td> %s </td>
-				<td> %s </td>
-				<td> %s </td>
-			</tr>
-		`, highlightFilename(p.File, []string{".+"}),
-			p.Line,
-			highlightString(html.EscapeString(p.Highlight), []string{searchWord}), // 検索ワードハイライト
-		)
-	}
+
+	// // --no-headingの場合
+	// var pm []PathMap
+	// for _, r := range results {
+	// 	spl := strings.SplitN(r, ":", -1)
+	// 	fmt.Println(spl)
+	// 	pm = append(pm, PathMap{File: spl[0], Line: spl[1], Highlight: spl[2]}) //strings.Join(spl[2:], "")})
+	// }
+	// fmt.Println(pm)
+	// for _, p := range pm {
+	// 	fmt.Fprintf(w,
+	// 		`
+	// 		<tr>
+	// 			<td> %s </td>
+	// 			<td> %s </td>
+	// 			<td> %s </td>
+	// 		</tr>
+	// 	`, highlightFilename(p.File, []string{".+"}),
+	// 		p.Line,
+	// 		highlightString(html.EscapeString(p.Highlight), []string{searchWord}), // 検索ワードハイライト
+	// 	)
+	// }
 
 	// templateにHTML渡すのは非array形式、go側でHTML表示に整形する
 	// var htm []string
@@ -94,7 +105,7 @@ func highlightFilename(s string, words []string) string {
 		found := re.FindString(s)
 		if found != "" {
 			s = strings.Replace(s, found,
-				"<a href=\"file:///home/u1and0/Dropbox/Program/go/src/github.com/u1and0/grep-server/"+found+"\">"+found+"</a>", 1)
+				"<a href=\"file://"+found+"\">"+found+"</a>", 1)
 		}
 	}
 	return s
