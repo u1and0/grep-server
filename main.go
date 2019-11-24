@@ -34,9 +34,9 @@ func htmlClause(s string) string {
 func process(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlClause(""))
 	// コマンド生成
-	searchWord := "file [a-z]+"
+	searchWord := []string{"会社", "生産", "弁当"}
 	// `rg -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rg", "-n", "--heading", searchWord, "/home/vagrant/Dropbox/Document/").Output()
+	out, err := exec.Command("rg", "-n", "--heading", searchWord[0], searchWord[1], "/home/vagrant/Dropbox/Document/").Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -50,7 +50,7 @@ func process(w http.ResponseWriter, r *http.Request) {
 	match := regexp.MustCompile(`^\d`)
 	for _, r := range results {
 		if match.MatchString(r) {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), []string{searchWord}))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), searchWord))
 		} else {
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r, []string{".*"}))
 		}
@@ -100,8 +100,6 @@ func process(w http.ResponseWriter, r *http.Request) {
 func highlightFilename(s string, words []string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
-		/* Replace only a word
-		全て変える re.ReplaceAll(s, "<span style=\"background-color:#FFCC00;\">$1</span>")　は削除 */
 		found := re.FindString(s)
 		if found != "" {
 			s = strings.Replace(s, found,
@@ -115,8 +113,6 @@ func highlightFilename(s string, words []string) string {
 func highlightString(s string, words []string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
-		/* Replace only a word
-		全て変える re.ReplaceAll(s, "<span style=\"background-color:#FFCC00;\">$1</span>")　は削除 */
 		found := re.FindString(s)
 		if found != "" {
 			s = strings.Replace(s, found, "<span style=\"background-color:#FFCC00;\">"+found+"</span>", 1)
