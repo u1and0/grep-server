@@ -50,7 +50,16 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// コマンド生成
 	// searchWord := []string{"会社", "生産", "弁当"}
 	// `rga -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rga", "-n", "--heading", receiveValue, "/home/vagrant/Dropbox/Document/k会社", "2>", "/dev/null").Output()
+	opt := []string{ // rga/rg options
+		"--line-number",
+		"--max-columns", "160",
+		"--max-columns-preview",
+		"--heading",
+	}
+	opt = append(opt, receiveValue)                         // search words
+	opt = append(opt, "/home/vagrant/Dropbox/Document/k会社") // directory path
+	opt = append(opt, "2>", "/dev/null")
+	out, err := exec.Command("rga", opt...).Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -63,11 +72,11 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// html表示
 	fmt.Fprintf(w, htmlClause(receiveValue))
 	match := regexp.MustCompile(`^\d`)
-	for _, r := range results {
-		if match.MatchString(r) {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), receiveValue))
+	for _, s := range results {
+		if match.MatchString(s) { // 行数から始まるとき
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(s), receiveValue))
 		} else {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 		}
 	}
 
