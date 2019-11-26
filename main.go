@@ -35,8 +35,8 @@ func process(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlClause(""))
 	// コマンド生成
 	searchWord := []string{"会社", "生産", "弁当"}
-	// `rg -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rg", "-n", "--heading", searchWord[0], searchWord[1], "/home/vagrant/Dropbox/Document/").Output()
+	// `rga -n --no-heading "search word"` と同じ動き
+	out, err := exec.Command("rga", "-n", "--heading", searchWord[0], searchWord[1], searchWord[2], "/home/vagrant/Dropbox/Document/k会社").Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -50,9 +50,9 @@ func process(w http.ResponseWriter, r *http.Request) {
 	match := regexp.MustCompile(`^\d`)
 	for _, r := range results {
 		if match.MatchString(r) {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), searchWord))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), searchWord...))
 		} else {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r, []string{".*"}))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r, ".*"))
 		}
 	}
 
@@ -97,7 +97,7 @@ func process(w http.ResponseWriter, r *http.Request) {
 }
 
 // sの文字列中にあるwordsを紫色に変えてリンク化したhtmlを返す
-func highlightFilename(s string, words []string) string {
+func highlightFilename(s string, words ...string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
 		found := re.FindString(s)
@@ -110,7 +110,7 @@ func highlightFilename(s string, words []string) string {
 }
 
 // sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
-func highlightString(s string, words []string) string {
+func highlightString(s string, words ...string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
 		found := re.FindString(s)
