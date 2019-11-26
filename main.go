@@ -25,19 +25,32 @@ func htmlClause(s string) string {
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server</title>
+			<title>Grep Server %s</title>
 			</head>
-			<body>
-			%s
-			<table>`, s)
+			  <body>
+			    <form method="get" action="/searching">
+  				  <input type="file" name="path-select" id="path-select" value="Browse" webkitdirectory />
+				  <br>
+				  <input type="text" name="query" value="%s" size="50">
+				  <input type="submit" name="submit" value="検索">
+				  <a href=https://github.com/u1and0/locate-server/blob/master/README.md>Help</a>
+			    </form>
+				<table>`, s, s)
 }
 
-func process(w http.ResponseWriter, r *http.Request) {
+// Top page
+func showInit(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, htmlClause(""))
+}
+
+func addResult(w http.ResponseWriter, r *http.Request) {
+	// Modify query
+	receiveValue := r.FormValue("query")
+
 	// コマンド生成
-	searchWord := []string{"会社", "生産", "弁当"}
+	// searchWord := []string{"会社", "生産", "弁当"}
 	// `rga -n --no-heading "search word"` と同じ動き
-	out, err := exec.Command("rga", "-n", "--heading", searchWord[0], searchWord[1], searchWord[2], "/home/vagrant/Dropbox/Document/k会社").Output()
+	out, err := exec.Command("rga", "-n", "--heading", receiveValue, "/home/vagrant/Dropbox/Document/k会社", "2>", "/dev/null").Output()
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -47,44 +60,16 @@ func process(w http.ResponseWriter, r *http.Request) {
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
-	// --headingの場合
+	// html表示
+	fmt.Fprintf(w, htmlClause(receiveValue))
 	match := regexp.MustCompile(`^\d`)
 	for _, r := range results {
 		if match.MatchString(r) {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), searchWord...))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), receiveValue))
 		} else {
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r))
 		}
 	}
-
-	// // --no-headingの場合
-	// var pm []PathMap
-	// for _, r := range results {
-	// 	spl := strings.SplitN(r, ":", -1)
-	// 	fmt.Println(spl)
-	// 	pm = append(pm, PathMap{File: spl[0], Line: spl[1], Highlight: spl[2]}) //strings.Join(spl[2:], "")})
-	// }
-	// fmt.Println(pm)
-	// for _, p := range pm {
-	// 	fmt.Fprintf(w,
-	// 		`
-	// 		<tr>
-	// 			<td> %s </td>
-	// 			<td> %s </td>
-	// 			<td> %s </td>
-	// 		</tr>
-	// 	`, highlightFilename(p.File, []string{".+"}),
-	// 		p.Line,
-	// 		highlightString(html.EscapeString(p.Highlight), []string{searchWord}), // 検索ワードハイライト
-	// 	)
-	// }
-
-	// templateにHTML渡すのは非array形式、go側でHTML表示に整形する
-	// var htm []string
-	// for _, r := range hiresults {
-	// 	htm = append(htm, "<tr><td>"+r+"</td></tr>")
-	// }
-	// html := strings.Join(htm, "\n")
 
 	// template読込
 	// fmt.Println(html)
@@ -123,9 +108,7 @@ func highlightString(s string, words ...string) string {
 }
 
 func main() {
-	server := http.Server{
-		Addr: ":8080",
-	}
-	http.HandleFunc("/process", process)
-	server.ListenAndServe()
+	http.HandleFunc("/", showInit)
+	http.HandleFunc("/searching", addResult)
+	http.ListenAndServe(":8080", nil)
 }
