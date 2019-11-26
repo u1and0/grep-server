@@ -5,6 +5,7 @@ import (
 	"html"
 	"net/http"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 )
@@ -52,7 +53,7 @@ func process(w http.ResponseWriter, r *http.Request) {
 		if match.MatchString(r) {
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(r), searchWord...))
 		} else {
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r, ".*"))
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(r))
 		}
 	}
 
@@ -97,14 +98,14 @@ func process(w http.ResponseWriter, r *http.Request) {
 }
 
 // sの文字列中にあるwordsを紫色に変えてリンク化したhtmlを返す
-func highlightFilename(s string, words ...string) string {
-	for _, w := range words {
-		re := regexp.MustCompile(`((?i)` + w + `)`)
-		found := re.FindString(s)
-		if found != "" {
-			s = strings.Replace(s, found,
-				"<a href=\"file://"+found+"\">"+found+"</a>", 1)
-		}
+func highlightFilename(s string) string {
+	re := regexp.MustCompile(`((?i)` + "^/.*" + `)`) // /から始まる全ての文字列
+	found := re.FindString(s)
+	dirpath := filepath.Dir(found)
+	if found != "" {
+		s = strings.Replace(s, found,
+			"<a href=\"file://"+found+"\">"+found+"</a>", 1)
+		s += " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s
 }
