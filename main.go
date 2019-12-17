@@ -29,14 +29,16 @@ func htmlClause(s string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-  				  <input type="file" name="path-select" id="path-select" value="Browse" webkitdirectory />
+				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" size="50">
+				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
-				  <input type="text" name="query" value="%s" size="50">
+				  <input type="text" placeholder="検索語" name="query" value="%s" size="50">
 				  <input type="submit" name="submit" value="検索">
-				  <a href=https://github.com/u1and0/locate-server/blob/master/README.md>Help</a>
 			    </form>
 				<table>`, s, s)
 }
+
+//old input <input type="file" name="directory-path" value="Browse" webkitdirectory />
 
 // Top page
 func showInit(w http.ResponseWriter, r *http.Request) {
@@ -46,6 +48,7 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
+	directoryPath := r.FormValue("directory-path")
 
 	// コマンド生成
 	// searchWord := []string{"会社", "生産", "弁当"}
@@ -56,9 +59,10 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--max-columns-preview",
 		"--heading",
 	}
-	opt = append(opt, receiveValue)                         // search words
-	opt = append(opt, "/home/vagrant/Dropbox/Document/k会社") // directory path
-	opt = append(opt, "2>", "/dev/null")
+	opt = append(opt, receiveValue)  // search words
+	opt = append(opt, directoryPath) // directory path
+	// opt = append(opt, "2>", "/dev/null")
+	fmt.Println(opt)
 	out, err := exec.Command("rga", opt...).Output()
 	if err != nil {
 		fmt.Println(err)
@@ -79,19 +83,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 		}
 	}
-
-	// template読込
-	// fmt.Println(html)
-	// t, _ := template.ParseFiles("range.html") // 結果を書き込むhtmlファイル
-	// t.Execute(w, template.HTML(r.FormValue(html)))
-
-	// template読み込まない方式
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
 }
 
-// sの文字列中にあるwordsを紫色に変えてリンク化したhtmlを返す
+// sの文字列中にあるwordsをリンク化したhtmlを返す
 func highlightFilename(s string) string {
 	re := regexp.MustCompile(`((?i)` + "^/.*" + `)`) // /から始まる全ての文字列
 	found := re.FindString(s)
