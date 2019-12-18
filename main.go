@@ -49,6 +49,13 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
+	var d string
+	if strings.Contains(directoryPath, `\`) {
+		// d = filepath.ToSlash(directoryPath) // なぜかfilepath.ToSlashしてもバックスラッシュが変わらない
+		d = strings.ReplaceAll(directoryPath, `\`, "/")
+	} else {
+		d = directoryPath
+	}
 
 	// コマンド生成
 	// searchWord := []string{"会社", "生産", "弁当"}
@@ -59,8 +66,8 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--max-columns-preview",
 		"--heading",
 	}
-	opt = append(opt, receiveValue)  // search words
-	opt = append(opt, directoryPath) // directory path
+	opt = append(opt, receiveValue) // search words
+	opt = append(opt, d)            // directory path
 	// opt = append(opt, "2>", "/dev/null")
 	fmt.Println(opt)
 	out, err := exec.Command("rga", opt...).Output()
