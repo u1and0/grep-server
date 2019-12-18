@@ -19,30 +19,30 @@ type PathMap struct {
 	Highlight string
 }
 
-func htmlClause(s string) string {
+func htmlClause(s, d string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server %s</title>
+			<title>Grep Server %s %s</title>
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" size="50">
+				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="50">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 				  <input type="text" placeholder="検索語" name="query" value="%s" size="50">
 				  <input type="submit" name="submit" value="検索">
 			    </form>
-				<table>`, s, s)
+				<table>`, s, d, d, s)
 }
 
 //old input <input type="file" name="directory-path" value="Browse" webkitdirectory />
 
 // Top page
 func showInit(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, htmlClause(""))
+	fmt.Fprintf(w, htmlClause("", ""))
 }
 
 func addResult(w http.ResponseWriter, r *http.Request) {
@@ -74,7 +74,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	results = results[:len(results)-1] // Pop last element cause \\n
 
 	// html表示
-	fmt.Fprintf(w, htmlClause(receiveValue))
+	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるとき
