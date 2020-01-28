@@ -22,6 +22,8 @@ const (
 
 var (
 	showVersion  bool
+	root         = flag.String("r", "", "DB root directory")
+	pathSplitWin = flag.Bool("s", false, "OS path split windows backslash")
 )
 
 // PathMap : File:ファイルネームを起点として、
@@ -63,12 +65,13 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
-	var d string
-	if strings.Contains(directoryPath, `\`) {
-		// d = filepath.ToSlash(directoryPath) // なぜかfilepath.ToSlashしてもバックスラッシュが変わらない
-		d = strings.ReplaceAll(directoryPath, `\`, "/")
-	} else {
-		d = directoryPath
+	commandDir := directoryPath
+	if *root != "" {
+		commandDir = strings.TrimPrefix(commandDir, *root)
+	}
+	if *pathSplitWin {
+		// filepath.ToSlash(directoryPath) <= Windows版Goでしか有効でない
+		commandDir = strings.ReplaceAll(commandDir, `\`, "/")
 	}
 
 	// コマンド生成
@@ -81,7 +84,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--heading",
 	}
 	opt = append(opt, receiveValue) // search words
-	opt = append(opt, d)            // directory path
+	opt = append(opt, commandDir)   // directory path
 	// opt = append(opt, "2>", "/dev/null")
 	fmt.Println(opt)
 	out, err := exec.Command("rga", opt...).Output()
@@ -94,7 +97,8 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
-	// html表示
+	/* html表示 */
+	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
@@ -109,14 +113,24 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 				</html>`)
 }
 
-// sの文字列中にあるwordsをリンク化したhtmlを返す
+// ファイル名をリンク化したhtmlを返す
 func highlightFilename(s string) string {
-	re := regexp.MustCompile(`((?i)` + "^/.*" + `)`) // /から始まる全ての文字列
-	found := re.FindString(s)
-	dirpath := filepath.Dir(found)
-	if found != "" {
-		s = strings.Replace(s, found,
-			"<a href=\"file://"+found+"\">"+found+"</a>", 1)
+	dirpath := filepath.Dir(s)
+
+	// drive path convert
+	if *root != "" && s != "" {
+		s = *root + s
+		dirpath = *root + dirpath
+	}
+	// windows path convert
+	if *pathSplitWin {
+		s = strings.ReplaceAll(s, "/", `\`)
+		// dirpath = strings.ReplaceAll(dirpath, "/", `\`)
+	}
+
+	if s != "" {
+		s = strings.Replace(s, s,
+			"<a href=\"file://"+s+"\">"+s+"</a>", 1)
 		s += " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s
