@@ -35,7 +35,7 @@ type PathMap struct {
 	Highlight string
 }
 
-func htmlClause(s, d string) string {
+func htmlClause(s, d, de string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
@@ -45,26 +45,36 @@ func htmlClause(s, d string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="50">
+				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="130" title="フォルダパス">
+				<input type="number" value="%s" list="depthList" name="depth" id="depth" size="5" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
-				  <input type="text" placeholder="検索語" name="query" value="%s" size="50">
+				  <input type="text" placeholder="検索語" name="query" value="%s" size="140" title="検索ワード">
 				  <input type="submit" name="submit" value="検索">
+				  <datalist id="depthList">
+					<option value="1"></option>
+					<option value="2"></option>
+					<option value="3"></option>
+					<option value="4"></option>
+					<option value="5"></option>
+				  </datalist>
 			    </form>
-				<table>`, s, d, d, s)
+				<table>`, s, d, d, de, s)
 }
-
-//old input <input type="file" name="directory-path" value="Browse" webkitdirectory />
 
 // Top page
 func showInit(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, htmlClause("", ""))
+	fmt.Fprintf(w, htmlClause("", "", "2"))
 }
 
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
+	searchDepth := r.FormValue("depth")
+	if searchDepth == "" {
+		searchDepth = "2"
+	}
 	commandDir := directoryPath
 	if *root != "" {
 		commandDir = strings.TrimPrefix(commandDir, *root)
@@ -75,13 +85,18 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// コマンド生成
-	// searchWord := []string{"会社", "生産", "弁当"}
-	// `rga -n --no-heading "search word"` と同じ動き
 	opt := []string{ // rga/rg options
 		"--line-number",
 		"--max-columns", "160",
 		"--max-columns-preview",
 		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--ignore-case",
+		"--max-depth", searchDepth,
+	}
+	if *pathSplitWin {
+		opt = append(opt, "--encoding", "shift-jis")
 	}
 	opt = append(opt, receiveValue) // search words
 	opt = append(opt, commandDir)   // directory path
@@ -99,7 +114,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath))
+	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath, searchDepth))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるとき
@@ -125,7 +140,6 @@ func highlightFilename(s string) string {
 	// windows path convert
 	if *pathSplitWin {
 		s = strings.ReplaceAll(s, "/", `\`)
-		// dirpath = strings.ReplaceAll(dirpath, "/", `\`)
 	}
 
 	if s != "" {
