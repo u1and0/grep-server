@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html"
 	"net/http"
@@ -8,6 +9,19 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+)
+
+const (
+	// VERSION : version
+	VERSION = "0.0.0"
+	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
+	LOGFILE = "/var/log/gerp-server.log"
+	// CAP : 表示する検索結果上限数
+	CAP = 1000
+)
+
+var (
+	showVersion  bool
 )
 
 // PathMap : File:ファイルネームを起点として、
@@ -121,6 +135,14 @@ func highlightString(s string, words ...string) string {
 }
 
 func main() {
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.Parse()
+	if showVersion {
+		fmt.Println("grep-server", VERSION)
+		return // versionを表示して終了
+	}
+
 	http.HandleFunc("/", showInit)
 	http.HandleFunc("/searching", addResult)
 	http.ListenAndServe(":8080", nil)
