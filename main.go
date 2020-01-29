@@ -144,7 +144,7 @@ func highlightFilename(s string) string {
 
 	if s != "" {
 		s = strings.Replace(s, s,
-			"<a href=\"file://"+s+"\">"+s+"</a>", 1)
+			"<a target=\"_blank\" href=\"file://"+s+"\">"+s+"</a>", 1)
 		s += " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s
