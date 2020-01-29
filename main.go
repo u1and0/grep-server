@@ -16,8 +16,6 @@ const (
 	VERSION = "0.0.0"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/gerp-server.log"
-	// CAP : 表示する検索結果上限数
-	CAP = 1000
 )
 
 var (
@@ -45,25 +43,28 @@ func htmlClause(s, d, de string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				  <input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="130" title="フォルダパス">
-				  <select value="%s" name="depth" id="depth" size="1" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+				  <input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="140" title="フォルダパス">
+				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
+				  <br>
+				  <input type="text" placeholder="検索語" name="query" value="%s" size="120" title="検索ワード">
+				  検索階層数
+				  <select name="depth" id="depth" size="1" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+				  %s
+				  </select>
+				  <input type="submit" name="submit" value="検索">
+			    </form>
+				<table>`, s, d, d, s, de)
+}
+
+// Top page
+func showInit(w http.ResponseWriter, r *http.Request) {
+	fmt.Fprintf(w, htmlClause("", "", `
 					<option value="1">1</option>
 					<option value="2">2</option>
 					<option value="3">3</option>
 					<option value="4">4</option>
 					<option value="5">5</option>
-				  </select>
-				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
-				  <br>
-				  <input type="text" placeholder="検索語" name="query" value="%s" size="140" title="検索ワード">
-				  <input type="submit" name="submit" value="検索">
-			    </form>
-				<table>`, s, d, d, de, s)
-}
-
-// Top page
-func showInit(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, htmlClause("", "", "2"))
+	`))
 }
 
 func addResult(w http.ResponseWriter, r *http.Request) {
@@ -107,7 +108,16 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath, searchDepth))
+	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath, func() string {
+		s := `
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+		`
+		return strings.Replace(s, ">"+searchDepth, " selected>"+searchDepth, 1)
+	}()))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるとき
