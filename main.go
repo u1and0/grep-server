@@ -45,19 +45,18 @@ func htmlClause(s, d, de string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="130" title="フォルダパス">
-				<input type="number" value="%s" list="depthList" name="depth" id="depth" size="5" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+				  <input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="130" title="フォルダパス">
+				  <select value="%s" name="depth" id="depth" size="1" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+				  </select>
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 				  <input type="text" placeholder="検索語" name="query" value="%s" size="140" title="検索ワード">
 				  <input type="submit" name="submit" value="検索">
-				  <datalist id="depthList">
-					<option value="1"></option>
-					<option value="2"></option>
-					<option value="3"></option>
-					<option value="4"></option>
-					<option value="5"></option>
-				  </datalist>
 			    </form>
 				<table>`, s, d, d, de, s)
 }
@@ -72,9 +71,6 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
 	searchDepth := r.FormValue("depth")
-	if searchDepth == "" {
-		searchDepth = "2"
-	}
 	commandDir := directoryPath
 	if *root != "" {
 		commandDir = strings.TrimPrefix(commandDir, *root)
