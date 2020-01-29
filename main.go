@@ -149,7 +149,7 @@ func highlightString(s string, words ...string) string {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
 		found := re.FindString(s)
 		if found != "" {
-			s = strings.Replace(s, found, "<span style=\"background-color:#FFCC00;\">"+found+"</span>", 1)
+			s = strings.Replace(s, found, "<span style=\"background-color:#FFCC00;\">"+found+"</span>", -1)
 		}
 	}
 	return s
