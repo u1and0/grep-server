@@ -91,9 +91,6 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--ignore-case",
 		"--max-depth", searchDepth,
 	}
-	if *pathSplitWin {
-		opt = append(opt, "--encoding", "shift-jis")
-	}
 	opt = append(opt, receiveValue) // search words
 	opt = append(opt, commandDir)   // directory path
 	// opt = append(opt, "2>", "/dev/null")
