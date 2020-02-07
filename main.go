@@ -37,7 +37,7 @@ type PathMap struct {
 //			 s : 検索キーワード
 // 			 d : ディレクトリパス
 // 			de : 検索階層数を選択したhtml
-func htmlClause(s, d, de string) string {
+func htmlClause(s, d, de, ao string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
@@ -60,8 +60,9 @@ func htmlClause(s, d, de string) string {
 					  placeholder="検索語"
 					  name="query"
 					  value="%s"
-					  size="120"
+					  size="100"
 					  title="検索ワード">
+				  %s
 				  検索階層数
 				  <select name="depth"
 					  id="depth"
@@ -71,7 +72,7 @@ func htmlClause(s, d, de string) string {
 				  </select>
 				  <input type="submit" name="submit" value="検索">
 			    </form>
-				<table>`, s, d, d, s, de)
+				<table>`, s, d, d, s, ao, de)
 }
 
 // showInit : Top page html
@@ -84,7 +85,23 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 					<option value="3">3</option>
 					<option value="4">4</option>
 					<option value="5">5</option>
-	`))
+	`,
+		`<input type="radio" value="and" name="andor-search" checked="checked">and
+		 <input type="radio" value="or"  name="andor-search">or`))
+}
+
+// andorPadding : 検索ワードのスペースをandなら".*" orなら"|"で埋める
+func andorPadding(s, method string) string {
+	ss := strings.Fields(s)
+	if method == "and" {
+		method = ".*"
+		s = strings.Join(ss, method)
+	} else if method == "or" {
+		method = "|"
+		s = strings.Join(ss, method)
+		s = "(" + s + ")"
+	}
+	return s
 }
 
 // addResult : Print ripgrep-all result as html contents
@@ -92,14 +109,15 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
+	searchAndOr := r.FormValue("andor-search")
 	searchDepth := r.FormValue("depth")
-	commandDir := directoryPath
+	slashedDirPath := directoryPath
 	if *root != "" {
-		commandDir = strings.TrimPrefix(commandDir, *root)
+		slashedDirPath = strings.TrimPrefix(slashedDirPath, *root)
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(directoryPath) <= Windows版Goでしか有効でない
-		commandDir = strings.ReplaceAll(commandDir, `\`, "/")
+		slashedDirPath = strings.ReplaceAll(slashedDirPath, `\`, "/")
 	}
 
 	// コマンド生成
@@ -113,8 +131,9 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--ignore-case",
 		"--max-depth", searchDepth,
 	}
-	opt = append(opt, receiveValue) // search words
-	opt = append(opt, commandDir)   // directory path
+	searchWord := andorPadding(receiveValue, searchAndOr)
+	opt = append(opt, searchWord)
+	opt = append(opt, slashedDirPath)
 	// opt = append(opt, "2>", "/dev/null")
 	fmt.Println(opt)
 	out, err := exec.Command("rga", opt...).Output()
@@ -141,13 +160,22 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 				">"+searchDepth,
 				" selected>"+searchDepth,
 				1)
-		}()))
+		}(),
+		func() string {
+			s := `<input type="radio" value="and" name="andor-search">and
+				 <input type="radio" value="or"  name="andor-search">or`
+			return strings.Replace(s,
+				"\"andor-search\">"+searchAndOr,
+				"\"andor-search\"checked=\"checked\">"+searchAndOr,
+				1)
+		}(),
+	))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるときはfile contents
 			fmt.Fprintf(w,
 				`<tr> <td> %s </td> <tr>`,
-				highlightString(html.EscapeString(s), receiveValue))
+				highlightString(html.EscapeString(s), searchWord))
 		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 		}
