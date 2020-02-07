@@ -131,8 +131,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--ignore-case",
 		"--max-depth", searchDepth,
 	}
-	searchWord := andorPadding(receiveValue, searchAndOr)
-	opt = append(opt, searchWord)
+	opt = append(opt, andorPadding(receiveValue, searchAndOr))
 	opt = append(opt, slashedDirPath)
 	// opt = append(opt, "2>", "/dev/null")
 	fmt.Println(opt)
@@ -173,9 +172,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるときはfile contents
-			fmt.Fprintf(w,
-				`<tr> <td> %s </td> <tr>`,
-				highlightString(html.EscapeString(s), searchWord))
+			fmt.Fprintf(w, // => http.ResponseWriter
+				`<tr> <td> %s </td> <tr>`, highlightString(
+					html.EscapeString(s),
+					// メタ文字含まない検索文字のみhighlight
+					strings.Fields(receiveValue)...),
+			)
 		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 		}
