@@ -33,6 +33,10 @@ type PathMap struct {
 	Highlight string
 }
 
+// htmlClause  : ページに表示する情報
+//			 s : 検索キーワード
+// 			 d : ディレクトリパス
+// 			de : 検索階層数を選択したhtml
 func htmlClause(s, d, de string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
@@ -43,21 +47,37 @@ func htmlClause(s, d, de string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				  <input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="140" title="フォルダパス">
+				  <input type="text"
+					  placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)"
+					  name="directory-path"
+					  id="directory-path"
+					  value="%s"
+					  size="140"
+					  title="フォルダパス">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
-				  <input type="text" placeholder="検索語" name="query" value="%s" size="120" title="検索ワード">
+				  <input type="text"
+					  placeholder="検索語"
+					  name="query"
+					  value="%s"
+					  size="120"
+					  title="検索ワード">
 				  検索階層数
-				  <select name="depth" id="depth" size="1" title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
-				  %s
+				  <select name="depth"
+					  id="depth"
+					  size="1"
+					  title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+					  %s
 				  </select>
 				  <input type="submit" name="submit" value="検索">
 			    </form>
 				<table>`, s, d, d, s, de)
 }
 
-// Top page
+// showInit : Top page html
 func showInit(w http.ResponseWriter, r *http.Request) {
+	// 検索語、ディレクトリは空
+	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
 	fmt.Fprintf(w, htmlClause("", "", `
 					<option value="1">1</option>
 					<option value="2">2</option>
@@ -67,6 +87,7 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 	`))
 }
 
+// addResult : Print ripgrep-all result as html contents
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
@@ -108,21 +129,26 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath, func() string {
-		s := `
-					<option value="1">1</option>
-					<option value="2">2</option>
-					<option value="3">3</option>
-					<option value="4">4</option>
-					<option value="5">5</option>
-		`
-		return strings.Replace(s, ">"+searchDepth, " selected>"+searchDepth, 1)
-	}()))
+	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath,
+		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
+		func() string {
+			s := `<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>`
+			return strings.Replace(s,
+				">"+searchDepth,
+				" selected>"+searchDepth,
+				1)
+		}()))
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
-		if match.MatchString(s) { // 行数から始まるとき
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(s), receiveValue))
-		} else {
+		if match.MatchString(s) { // 行数から始まるときはfile contents
+			fmt.Fprintf(w,
+				`<tr> <td> %s </td> <tr>`,
+				highlightString(html.EscapeString(s), receiveValue))
+		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 		}
 	}
@@ -153,13 +179,14 @@ func highlightFilename(s string) string {
 	return s
 }
 
-// sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
+// highlightString : sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
 func highlightString(s string, words ...string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
 		found := re.FindString(s)
 		if found != "" {
-			s = strings.Replace(s, found, "<span style=\"background-color:#FFCC00;\">"+found+"</span>", -1)
+			s = strings.Replace(s, found,
+				"<span style=\"background-color:#FFCC00;\">"+found+"</span>", -1)
 		}
 	}
 	return s
@@ -174,7 +201,7 @@ func main() {
 		return // versionを表示して終了
 	}
 
-	http.HandleFunc("/", showInit)
-	http.HandleFunc("/searching", addResult)
+	http.HandleFunc("/", showInit)           // top page
+	http.HandleFunc("/searching", addResult) // search result
 	http.ListenAndServe(":8080", nil)
 }
