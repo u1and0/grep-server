@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
 )
 
 const (
@@ -139,11 +140,16 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	opt = append(opt, andorPadding(receiveValue, searchAndOr))
 	opt = append(opt, slashedDirPath)
-	log.Println(opt)
+	log.Println(opt) // Print rg command + options
+
+	// Searching...
+	startTime := time.Now()
 	out, err := exec.Command("rga", opt...).Output()
+	searchTime := float64((time.Since(startTime)).Nanoseconds()) / float64(time.Millisecond)
 	if err != nil {
 		log.Println(err)
 	}
+
 	// 結果をarray型に格納
 	outstr := string(out)
 	log.Println(outstr)
@@ -153,6 +159,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath,
+		// 検索階層数DDリスト
 		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
 		func() string {
 			s := `<option value="1">1</option>
@@ -165,6 +172,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 				" selected>"+searchDepth,
 				1)
 		}(),
+		// and / or ラジオボタン
 		func() string {
 			s := `<input type="radio" value="and" name="andor-search">and
 				 <input type="radio" value="or"  name="andor-search">or`
@@ -174,6 +182,9 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 				1)
 		}(),
 	))
+	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
+
+	/* 検索結果表示 */
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるときはfile contents
