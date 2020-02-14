@@ -19,7 +19,7 @@ const (
 	// VERSION : version
 	VERSION = "0.0.0"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
-	LOGFILE = "/var/log/gerp-server.log"
+	LOGFILE = "/var/log/grep-server.log"
 )
 
 var (
@@ -179,7 +179,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			return strings.Replace(s,
 				"\"andor-search\">"+searchAndOr,
 				"\"andor-search\"checked=\"checked\">"+searchAndOr,
-				1)
+				1) // and かor 選択されている方に"checked"をつける
 		}(),
 	))
 	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
@@ -207,7 +207,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 func highlightFilename(s string) string {
 	dirpath := filepath.Dir(s)
 
-	// drive path convert
+	// Add drive path
 	if *root != "" && s != "" {
 		s = *root + s
 		dirpath = *root + dirpath
