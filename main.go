@@ -138,9 +138,9 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--ignore-case",
 		"--max-depth", searchDepth,
 	}
-	opt = append(opt, andorPadding(receiveValue, searchAndOr))
+	searchWord := andorPadding(receiveValue, searchAndOr)
+	opt = append(opt, searchWord)
 	opt = append(opt, slashedDirPath)
-	log.Println(opt) // Print rg command + options
 
 	// Searching...
 	startTime := time.Now()
@@ -152,7 +152,6 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	// 結果をarray型に格納
 	outstr := string(out)
-	log.Println(outstr)
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
@@ -185,6 +184,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
 	/* 検索結果表示 */
+	var contentNum, fileNum int
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
 		if match.MatchString(s) { // 行数から始まるときはfile contents
@@ -194,13 +194,24 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 					// メタ文字含まない検索文字のみhighlight
 					strings.Fields(receiveValue)...),
 			)
+			contentNum++
 		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
+			fileNum++
 		}
 	}
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
+
+	log.Printf("%4dfiles %6dmatched lines %3.3fmsec "+
+		"Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		fileNum,
+		contentNum,
+		searchTime,
+		searchWord,
+		directoryPath,
+	)
 }
 
 // ファイル名をリンク化したhtmlを返す
