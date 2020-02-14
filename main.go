@@ -4,7 +4,10 @@ import (
 	"flag"
 	"fmt"
 	"html"
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -37,6 +40,7 @@ type PathMap struct {
 //			 s : 検索キーワード
 // 			 d : ディレクトリパス
 // 			de : 検索階層数を選択したhtml
+// 			ao : and / or 検索方式ラジオボタン
 func htmlClause(s, d, de, ao string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
@@ -100,6 +104,8 @@ func andorPadding(s, method string) string {
 		method = "|"
 		s = strings.Join(ss, method)
 		s = "(" + s + ")"
+	} else {
+		log.Fatalf("an error format selected %s", method)
 	}
 	return s
 }
@@ -133,15 +139,14 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	opt = append(opt, andorPadding(receiveValue, searchAndOr))
 	opt = append(opt, slashedDirPath)
-	// opt = append(opt, "2>", "/dev/null")
-	fmt.Println(opt)
+	log.Println(opt)
 	out, err := exec.Command("rga", opt...).Output()
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
 	// 結果をarray型に格納
 	outstr := string(out)
-	fmt.Println(outstr)
+	log.Println(outstr)
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
@@ -223,13 +228,22 @@ func highlightString(s string, words ...string) string {
 }
 
 func main() {
+	// Version info
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
 	if showVersion {
-		fmt.Println("grep-server", VERSION)
+		log.Println("grep-server", VERSION)
 		return // versionを表示して終了
 	}
+
+	// Log setting
+	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("[ERROR] Cannot open logfile " + err.Error())
+	}
+	defer logfile.Close()
+	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
 
 	http.HandleFunc("/", showInit)           // top page
 	http.HandleFunc("/searching", addResult) // search result
