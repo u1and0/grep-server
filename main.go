@@ -40,7 +40,7 @@ type PathMap struct {
 // htmlClause  : ページに表示する情報
 //			 s : 検索キーワード
 // 			 d : ディレクトリパス
-// 			de : 検索階層数を選択したhtml
+// 			de : Lvを選択したhtml
 // 			ao : and / or 検索方式ラジオボタン
 func htmlClause(s, d, de, ao string) string {
 	return fmt.Sprintf(
@@ -52,6 +52,7 @@ func htmlClause(s, d, de, ao string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
+				  <!-- directory -->
 				  <input type="text"
 					  placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)"
 					  name="directory-path"
@@ -61,23 +62,28 @@ func htmlClause(s, d, de, ao string) string {
 					  title="フォルダパス">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
+
+				  <!-- file -->
 				  <input type="text"
 					  placeholder="検索語"
 					  name="query"
 					  value="%s"
 					  size="100"
 					  title="検索ワード">
-				  %s
-				  検索階層数
-				  <select name="depth"
+
+				   <!-- depth -->
+				   Lv
+				   <select name="depth"
 					  id="depth"
 					  size="1"
-					  title="検索階層数: 数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+					  title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
 					  %s
 				  </select>
-				  <input type="submit" name="submit" value="検索">
+				 <!-- and/or -->
+				 %s
+				 <input type="submit" name="submit" value="検索">
 			    </form>
-				<table>`, s, d, d, s, ao, de)
+				<table>`, s, d, d, s, de, ao)
 }
 
 // showInit : Top page html
@@ -158,7 +164,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath,
-		// 検索階層数DDリスト
+		// LvDDリスト
 		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
 		func() string {
 			s := `<option value="1">1</option>
