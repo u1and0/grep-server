@@ -1,13 +1,31 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"html"
+	"io"
+	"log"
 	"net/http"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
+	"time"
+)
+
+const (
+	// VERSION : version
+	VERSION = "0.0.0"
+	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
+	LOGFILE = "/var/log/grep-server.log"
+)
+
+var (
+	showVersion  bool
+	root         = flag.String("r", "", "DB root directory")
+	pathSplitWin = flag.Bool("s", false, "OS path split windows backslash")
 )
 
 // PathMap : File:ファイルネームを起点として、
@@ -19,7 +37,12 @@ type PathMap struct {
 	Highlight string
 }
 
-func htmlClause(s, d string) string {
+// htmlClause  : ページに表示する情報
+//			 s : 検索キーワード
+// 			 d : ディレクトリパス
+// 			de : Lvを選択したhtml
+// 			ao : and / or 検索方式ラジオボタン
+func htmlClause(s, d, de, ao string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
@@ -29,99 +52,228 @@ func htmlClause(s, d string) string {
 			</head>
 			  <body>
 			    <form method="get" action="/searching">
-				<input type="text" placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)" name="directory-path" id="directory-path" value="%s" size="50">
+				  <!-- directory -->
+				  <input type="text"
+					  placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)"
+					  name="directory-path"
+					  id="directory-path"
+					  value="%s"
+					  size="140"
+					  title="フォルダパス">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
-				  <input type="text" placeholder="検索語" name="query" value="%s" size="50">
-				  <input type="submit" name="submit" value="検索">
+
+				  <!-- file -->
+				  <input type="text"
+					  placeholder="検索語"
+					  name="query"
+					  value="%s"
+					  size="100"
+					  title="検索ワード">
+
+				   <!-- depth -->
+				   Lv
+				   <select name="depth"
+					  id="depth"
+					  size="1"
+					  title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+					  %s
+				  </select>
+				 <!-- and/or -->
+				 %s
+				 <input type="submit" name="submit" value="検索">
 			    </form>
-				<table>`, s, d, d, s)
+				<table>`, s, d, d, s, de, ao)
 }
 
-//old input <input type="file" name="directory-path" value="Browse" webkitdirectory />
-
-// Top page
+// showInit : Top page html
 func showInit(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, htmlClause("", ""))
+	// 検索語、ディレクトリは空
+	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
+	fmt.Fprintf(w, htmlClause("", "", `
+					<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>
+	`,
+		`<input type="radio" value="and" name="andor-search" checked="checked">and
+		 <input type="radio" value="or"  name="andor-search">or`))
 }
 
+// andorPadding : 検索ワードのスペースをandなら".*" orなら"|"で埋める
+func andorPadding(s, method string) string {
+	ss := strings.Fields(s)
+	if method == "and" {
+		method = ".*"
+		s = strings.Join(ss, method)
+	} else if method == "or" {
+		method = "|"
+		s = strings.Join(ss, method)
+		s = "(" + s + ")"
+	} else {
+		log.Fatalf("an error format selected %s", method)
+	}
+	return s
+}
+
+// addResult : Print ripgrep-all result as html contents
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	receiveValue := r.FormValue("query")
 	directoryPath := r.FormValue("directory-path")
-	var d string
-	if strings.Contains(directoryPath, `\`) {
-		// d = filepath.ToSlash(directoryPath) // なぜかfilepath.ToSlashしてもバックスラッシュが変わらない
-		d = strings.ReplaceAll(directoryPath, `\`, "/")
-	} else {
-		d = directoryPath
+	searchAndOr := r.FormValue("andor-search")
+	searchDepth := r.FormValue("depth")
+	slashedDirPath := directoryPath
+	if *root != "" {
+		slashedDirPath = strings.TrimPrefix(slashedDirPath, *root)
+	}
+	if *pathSplitWin {
+		// filepath.ToSlash(directoryPath) <= Windows版Goでしか有効でない
+		slashedDirPath = strings.ReplaceAll(slashedDirPath, `\`, "/")
 	}
 
 	// コマンド生成
-	// searchWord := []string{"会社", "生産", "弁当"}
-	// `rga -n --no-heading "search word"` と同じ動き
 	opt := []string{ // rga/rg options
 		"--line-number",
 		"--max-columns", "160",
 		"--max-columns-preview",
 		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--ignore-case",
+		"--max-depth", searchDepth,
 	}
-	opt = append(opt, receiveValue) // search words
-	opt = append(opt, d)            // directory path
-	// opt = append(opt, "2>", "/dev/null")
-	fmt.Println(opt)
+	searchWord := andorPadding(receiveValue, searchAndOr)
+	opt = append(opt, searchWord)
+	opt = append(opt, slashedDirPath)
+
+	// Searching...
+	startTime := time.Now()
 	out, err := exec.Command("rga", opt...).Output()
+	searchTime := float64((time.Since(startTime)).Nanoseconds()) / float64(time.Millisecond)
 	if err != nil {
-		fmt.Println(err)
+		log.Println(err)
 	}
+
 	// 結果をarray型に格納
 	outstr := string(out)
-	fmt.Println(outstr)
 	results := strings.Split(outstr, "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
 
-	// html表示
-	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath))
+	/* html表示 */
+	// 検索後のフォームに再度同じキーワードを入力
+	fmt.Fprintf(w, htmlClause(receiveValue, directoryPath,
+		// LvDDリスト
+		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
+		func() string {
+			s := `<option value="1">1</option>
+				<option value="2">2</option>
+				<option value="3">3</option>
+				<option value="4">4</option>
+				<option value="5">5</option>`
+			return strings.Replace(s,
+				">"+searchDepth,
+				" selected>"+searchDepth,
+				1)
+		}(),
+		// and / or ラジオボタン
+		func() string {
+			s := `<input type="radio" value="and" name="andor-search">and
+				 <input type="radio" value="or"  name="andor-search">or`
+			return strings.Replace(s,
+				"\"andor-search\">"+searchAndOr,
+				"\"andor-search\"checked=\"checked\">"+searchAndOr,
+				1) // and かor 選択されている方に"checked"をつける
+		}(),
+	))
+	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
+
+	/* 検索結果表示 */
+	var contentNum, fileNum int
 	match := regexp.MustCompile(`^\d`)
 	for _, s := range results {
-		if match.MatchString(s) { // 行数から始まるとき
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightString(html.EscapeString(s), receiveValue))
-		} else {
+		if match.MatchString(s) { // 行数から始まるときはfile contents
+			fmt.Fprintf(w, // => http.ResponseWriter
+				`<tr> <td> %s </td> <tr>`, highlightString(
+					html.EscapeString(s),
+					// メタ文字含まない検索文字のみhighlight
+					strings.Fields(receiveValue)...),
+			)
+			contentNum++
+		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
+			fileNum++
 		}
 	}
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
+
+	log.Printf("%4dfiles %6dmatched lines %3.3fmsec "+
+		"Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		fileNum,
+		contentNum,
+		searchTime,
+		searchWord,
+		directoryPath,
+	)
 }
 
-// sの文字列中にあるwordsをリンク化したhtmlを返す
+// ファイル名をリンク化したhtmlを返す
 func highlightFilename(s string) string {
-	re := regexp.MustCompile(`((?i)` + "^/.*" + `)`) // /から始まる全ての文字列
-	found := re.FindString(s)
-	dirpath := filepath.Dir(found)
-	if found != "" {
-		s = strings.Replace(s, found,
-			"<a href=\"file://"+found+"\">"+found+"</a>", 1)
+	dirpath := filepath.Dir(s)
+
+	// Add drive path
+	if *root != "" && s != "" {
+		s = *root + s
+		dirpath = *root + dirpath
+	}
+	// windows path convert
+	if *pathSplitWin {
+		s = strings.ReplaceAll(s, "/", `\`)
+	}
+
+	if s != "" {
+		s = strings.Replace(s, s,
+			"<a target=\"_blank\" href=\"file://"+s+"\">"+s+"</a>", 1)
 		s += " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s
 }
 
-// sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
+// highlightString : sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
 func highlightString(s string, words ...string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`)
 		found := re.FindString(s)
 		if found != "" {
-			s = strings.Replace(s, found, "<span style=\"background-color:#FFCC00;\">"+found+"</span>", 1)
+			s = strings.Replace(s, found,
+				"<span style=\"background-color:#FFCC00;\">"+found+"</span>", -1)
 		}
 	}
 	return s
 }
 
 func main() {
-	http.HandleFunc("/", showInit)
-	http.HandleFunc("/searching", addResult)
+	// Version info
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.Parse()
+	if showVersion {
+		log.Println("grep-server", VERSION)
+		return // versionを表示して終了
+	}
+
+	// Log setting
+	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("[ERROR] Cannot open logfile " + err.Error())
+	}
+	defer logfile.Close()
+	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
+
+	http.HandleFunc("/", showInit)           // top page
+	http.HandleFunc("/searching", addResult) // search result
 	http.ListenAndServe(":8080", nil)
 }
