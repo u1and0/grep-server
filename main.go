@@ -42,34 +42,34 @@ type PathMap struct {
 // 			 d : ディレクトリパス
 // 			de : Lvを選択したhtml
 // 			ao : and / or 検索方式ラジオボタン
-func htmlClause(s, d, de, ao string) string {
+func htmlClause(searchWord, directoryPath, depth, andor string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server %s %s</title>
+			<title>Grep Server` + searchWord + directoryPath + `</title>
 			</head>
 			  <body>
-			    <form method="get" action="/searching">
+			    <form method="get" action="/search">
 				  <!-- directory -->
 				  <input type="text"
-					  placeholder="フォルダパス(ex:/usr/bin ex:\ShareUsers\User\Personal)"
+					  placeholder="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"
 					  name="directory-path"
 					  id="directory-path"
-					  value="%s"
+					  value="` + directoryPath + `"
 					  size="140"
-					  title="フォルダパス">
+					  title="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 
 				  <!-- file -->
 				  <input type="text"
-					  placeholder="検索語"
+					  placeholder="検索キーワードをスペース区切りで入力してください"
 					  name="query"
-					  value="%s"
+					  value="` + searchWord + `"
 					  size="100"
-					  title="検索ワード">
+					  title="検索キーワード">
 
 				   <!-- depth -->
 				   Lv
@@ -77,13 +77,13 @@ func htmlClause(s, d, de, ao string) string {
 					  id="depth"
 					  size="1"
 					  title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
-					  %s
+					  ` + depth + `
 				  </select>
 				 <!-- and/or -->
-				 %s
+				 ` + andor + `
 				 <input type="submit" name="submit" value="検索">
 			    </form>
-				<table>`, s, d, d, s, de, ao)
+				<table>`)
 }
 
 // showInit : Top page html
@@ -101,7 +101,7 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 		 <input type="radio" value="or"  name="andor-search">or`))
 }
 
-// andorPadding : 検索ワードのスペースをandなら".*" orなら"|"で埋める
+// andorPadding : 検索キーワードのスペースをandなら".*" orなら"|"で埋める
 func andorPadding(s, method string) string {
 	ss := strings.Fields(s)
 	if method == "and" {
@@ -148,7 +148,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	opt = append(opt, searchWord)
 	opt = append(opt, slashedDirPath)
 
-	// Searching...
+	// File contents search by `rga` command
 	startTime := time.Now()
 	out, err := exec.Command("rga", opt...).Output()
 	searchTime := float64((time.Since(startTime)).Nanoseconds()) / float64(time.Millisecond)
@@ -261,10 +261,13 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.Parse()
 	if showVersion {
-		log.Println("grep-server", VERSION)
+		fmt.Println("grep-server", VERSION)
 		return // versionを表示して終了
 	}
-
+	// Command check
+	if _, err := exec.LookPath("rga"); err != nil {
+		log.Fatal(err)
+	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -272,8 +275,8 @@ func main() {
 	}
 	defer logfile.Close()
 	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
-
-	http.HandleFunc("/", showInit)           // top page
-	http.HandleFunc("/searching", addResult) // search result
+	// HTTP response
+	http.HandleFunc("/", showInit)        // top page
+	http.HandleFunc("/search", addResult) // search result
 	http.ListenAndServe(":8080", nil)
 }
