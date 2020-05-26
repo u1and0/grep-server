@@ -37,6 +37,32 @@ type PathMap struct {
 	Highlight string
 }
 
+func main() {
+	// Version info
+	flag.BoolVar(&showVersion, "v", false, "show version")
+	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.Parse()
+	if showVersion {
+		fmt.Println("grep-server", VERSION)
+		return // versionを表示して終了
+	}
+	// Command check
+	if _, err := exec.LookPath("rga"); err != nil {
+		log.Fatal(err)
+	}
+	// Log setting
+	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatalf("[ERROR] Cannot open logfile " + err.Error())
+	}
+	defer logfile.Close()
+	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
+	// HTTP response
+	http.HandleFunc("/", showInit)        // top page
+	http.HandleFunc("/search", addResult) // search result
+	http.ListenAndServe(":8080", nil)
+}
+
 // htmlClause  : ページに表示する情報
 //			 s : 検索キーワード
 // 			 d : ディレクトリパス
@@ -253,30 +279,4 @@ func highlightString(s string, words ...string) string {
 		}
 	}
 	return s
-}
-
-func main() {
-	// Version info
-	flag.BoolVar(&showVersion, "v", false, "show version")
-	flag.BoolVar(&showVersion, "version", false, "show version")
-	flag.Parse()
-	if showVersion {
-		fmt.Println("grep-server", VERSION)
-		return // versionを表示して終了
-	}
-	// Command check
-	if _, err := exec.LookPath("rga"); err != nil {
-		log.Fatal(err)
-	}
-	// Log setting
-	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("[ERROR] Cannot open logfile " + err.Error())
-	}
-	defer logfile.Close()
-	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
-	// HTTP response
-	http.HandleFunc("/", showInit)        // top page
-	http.HandleFunc("/search", addResult) // search result
-	http.ListenAndServe(":8080", nil)
 }
