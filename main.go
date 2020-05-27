@@ -63,11 +63,11 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-// htmlClause  : ページに表示する情報
-//			 s : 検索キーワード
-// 			 d : ディレクトリパス
-// 			de : Lvを選択したhtml
-// 			ao : and / or 検索方式ラジオボタン
+// htmlClause    : ページに表示する情報
+//  searchWord   : 検索キーワード
+// directoryPath : ディレクトリパス
+//		   depth : Lvを選択したhtml
+// 		   andor : and / or 検索方式ラジオボタン
 func htmlClause(searchWord, directoryPath, depth, andor string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
@@ -95,7 +95,7 @@ func htmlClause(searchWord, directoryPath, depth, andor string) string {
 					  name="query"
 					  value="` + searchWord + `"
 					  size="100"
-					  title="検索キーワード">
+					  title="検索キーワードをスペース区切りで入力してください">
 
 				   <!-- depth -->
 				   Lv
@@ -107,7 +107,7 @@ func htmlClause(searchWord, directoryPath, depth, andor string) string {
 				  </select>
 				 <!-- and/or -->
 				 ` + andor + `
-				 <input type="submit" name="submit" value="検索">
+				 <input type="submit" name="submit" value="検索" title="スペース区切りをandとみなすかorとみなすか選択します">
 			    </form>
 				<table>`)
 }
@@ -236,14 +236,9 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 				</body>
 				</html>`)
 
-	log.Printf("%4dfiles %6dmatched lines %3.3fmsec "+
-		"Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		fileNum,
-		contentNum,
-		searchTime,
-		searchWord,
-		directoryPath,
-	)
+	log.Printf(
+		"%4dfiles %6dmatched lines %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		fileNum, contentNum, searchTime, searchWord, directoryPath)
 }
 
 // ファイル名をリンク化したhtmlを返す
