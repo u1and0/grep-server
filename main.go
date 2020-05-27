@@ -167,7 +167,8 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--heading",
 		"--color", "never",
 		"--no-binary",
-		"--ignore-case",
+		"--smart-case",
+		// "--ignore-case",
 		"--max-depth", searchDepth,
 	}
 	searchWord := andorPadding(receiveValue, searchAndOr)
