@@ -2,6 +2,17 @@ package main
 
 import "testing"
 
+func Test_highlightFilename(t *testing.T) {
+	s := "/home/vagrant/program_boot.pdf"
+	actual := highlightFilename(s)
+	expected := "<a target=\"_blank\" href=\"file:///home/vagrant/program_boot.pdf\"" + // Link
+		">/home/vagrant/program_boot.pdf</a>" + // Text
+		" <a href=\"file:///home/vagrant\" title=\"<< クリックでフォルダに移動\"><<</a>" //Directory
+	if actual != expected {
+		t.Fatalf("got: %v want: %v", actual, expected)
+	}
+}
+
 func Test_highlightString(t *testing.T) {
 	s := "/home/vagrant/Program/hoge3/program_boot.pdf"
 	actual := highlightString(s, "program", "pdf")
@@ -17,19 +28,25 @@ func Test_highlightString(t *testing.T) {
 }
 
 func Test_andorPadding(t *testing.T) {
-	s := "this is test"
-	// and test
-	method := "and"
-	actual := andorPadding(s, method)
-	expected := "this.*is.*test"
-	if actual != expected {
-		t.Fatalf("got: %v want: %v", actual, expected)
+	for i, method := range []string{"and", "or"} {
+		actual := andorPadding("this is test", method)
+		expected := []string{
+			"this.*is.*test", // AND Result
+			"(this|is|test)", // OR Result
+		}
+		if actual != expected[i] {
+			t.Fatalf("got: %v want: %v", actual, expected)
+		}
 	}
-	// OR test
-	method = "or"
-	actual = andorPadding(s, method)
-	expected = "(this|is|test)"
-	if actual != expected {
-		t.Fatalf("got: %v want: %v", actual, expected)
+}
+
+func Test_splitOutByte(t *testing.T) {
+	b := []byte("hello\nmy\nname\n") // need last CRLF
+	actual := splitOutByte(b)
+	expected := []string{"hello", "my", "name"}
+	for i, s := range actual {
+		if s != expected[i] {
+			t.Fatalf("got: %v want: %v", actual, expected)
+		}
 	}
 }

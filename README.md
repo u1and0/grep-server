@@ -27,7 +27,7 @@
 5. [ 検索 ]ボタンをクリックすると検索が始まります。
 6. Help: 開発元githubリンク
 
-![png1](https://github.com/u1and0/grep-server/blob/u1and0-patch-1/Screenshot%20from%202020-05-27%2010-12-46.png_)
+![png1](https://github.com/u1and0/grep-server/blob/u1and0-patch-1/Screenshot%20from%202020-05-27%2010-12-46.png)
 
 * 青字のハイライトはマッチした文字列があるファイルです。
 * 黒字に黄色背景はマッチした文字列です。行の最初の数字はマッチした行の行数です。
