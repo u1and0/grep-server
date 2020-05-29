@@ -83,7 +83,9 @@ func main() {
 // htmlClause : ページに表示する情報
 // depth	  : Lvを選択したhtml
 // andor 	  : and / or 検索方式ラジオボタン
-func (s *Search) htmlClause(depthHTML, andorHTML string) string {
+func (s *Search) htmlClause() string {
+	pathtext := `検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)`
+	keytext := `検索キーワードをスペース区切りで入力してください`
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
@@ -95,22 +97,22 @@ func (s *Search) htmlClause(depthHTML, andorHTML string) string {
 			    <form method="get" action="/search">
 				  <!-- directory -->
 				  <input type="text"
-					  placeholder="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"
+					  placeholder="` + pathtext + `"
 					  name="directory-path"
 					  id="directory-path"
 					  value="` + s.Path + `"
 					  size="140"
-					  title="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)">
+					  title="` + pathtext + `">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 
 				  <!-- file -->
 				  <input type="text"
-					  placeholder="検索キーワードをスペース区切りで入力してください"
+					  placeholder=` + keytext + `
 					  name="query"
 					  value="` + s.Keyword + `"
 					  size="100"
-					  title="検索キーワードをスペース区切りで入力してください">
+					  title="` + keytext + `">
 
 				   <!-- depth -->
 				   Lv
@@ -118,11 +120,31 @@ func (s *Search) htmlClause(depthHTML, andorHTML string) string {
 					  id="depth"
 					  size="1"
 					  title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
-					  ` + depthHTML + `
+					` +
+			func() string { // 検索階層は何もselectされていない(デフォルトは一番上の1になる)
+				n := `<option value="1">1</option>
+					<option value="2">2</option>
+					<option value="3">3</option>
+					<option value="4">4</option>
+					<option value="5">5</option>`
+				return strings.Replace(n, ">"+s.Depth, " selected>"+s.Depth, 1)
+			}() + `
 				  </select>
 				 <!-- and/or -->
-				 ` + andorHTML + `
-				 <input type="submit" name="submit" value="検索" title="スペース区切りをandとみなすかorとみなすか選択します">
+				 ` +
+			func() string { // and かor 選択されている方に"checked"をつける
+				n := `
+				<input type="radio" value="and" name="andor-search"
+				title="スペース区切りをandとみなすかorとみなすか選択します">and
+				<input type="radio" value="or"  name="andor-search"
+				title="スペース区切りをandとみなすかorとみなすか選択します">or
+				`
+				return strings.Replace(n,
+					"\"andor-search\">"+s.AndOr,
+					"\"andor-search\"checked=\"checked\">"+s.AndOr,
+					1)
+			}() + `
+				 <input type="submit" name="submit" value="検索">
 			    </form>
 				<table>`)
 }
@@ -131,18 +153,11 @@ func (s *Search) htmlClause(depthHTML, andorHTML string) string {
 func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	s := Search{}
-	fmt.Fprintf(w, s.htmlClause(
-		`<option value="1">1</option>
-		<option value="2">2</option>
-		<option value="3">3</option>
-		<option value="4">4</option>
-		<option value="5">5</option>`,
-		`<input type="radio" value="and" name="andor-search" checked="checked">and
-		 <input type="radio" value="or"  name="andor-search">or`))
+	s := Search{Depth: "1", AndOr: "and"}
+	fmt.Fprintf(w, s.htmlClause())
 }
 
-// andorPadding : 検索キーワードのスペースをandなら".*" orなら"|"で埋める
+// andorPadding : 検索キーワードをrgaコマンドへ渡す形式に正規化する
 func andorPadding(s, method string) string {
 	ss := strings.Fields(s)
 	if method == "and" {
@@ -158,7 +173,7 @@ func andorPadding(s, method string) string {
 	return s
 }
 
-// システムからbyteで返される結果をsrting リストに格納
+// システムからbyteで返される結果をsrting リストに格納する
 func splitOutByte(b []byte) []string {
 	results := strings.Split(string(b), "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
@@ -219,30 +234,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, search.htmlClause(
-		// LvDDリスト
-		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
-		func() string {
-			s := `<option value="1">1</option>
-				<option value="2">2</option>
-				<option value="3">3</option>
-				<option value="4">4</option>
-				<option value="5">5</option>`
-			return strings.Replace(s,
-				">"+search.Depth,
-				" selected>"+search.Depth,
-				1)
-		}(),
-		// and / or ラジオボタン
-		func() string {
-			s := `<input type="radio" value="and" name="andor-search">and
-				 <input type="radio" value="or"  name="andor-search">or`
-			return strings.Replace(s,
-				"\"andor-search\">"+search.AndOr,
-				"\"andor-search\"checked=\"checked\">"+search.AndOr,
-				1) // and かor 選択されている方に"checked"をつける
-		}(),
-	))
+	fmt.Fprintf(w, search.htmlClause())
 	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
 	if debug {
@@ -251,12 +243,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* 検索結果表示 */
 	match := Match{}
 	// var contentNum, fileNum int
-	regex := regexp.MustCompile(`^/`)
+	regex := regexp.MustCompile(`^[/\\]`)
 	for _, s := range results {
 		if regex.MatchString(s) { // '/'から始まるときはfilename
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 			match.File++
-			match.Line-- // --heading によりファイル名の前に改行が入る
+			match.Line-- // --heading によりファイル名の前に改行が入るため
 		} else { // '/'から始まらないときはfile contents
 			fmt.Fprintf(w, // => http.ResponseWriter
 				`<tr> <td> %s </td> <tr>`, highlightString(
