@@ -31,12 +31,12 @@ var (
 
 // Search : Search query structure
 type Search struct {
-	Keyword        string //  検索語
-	Path           string //  検索対象パス
-	AndOr          string //  and / or の検索メソッド
-	Depth          string //  検索対象パスから検索する階層数
-	CommandKeyword string //  rgaコマンドに渡す and / or padding した検索キーワード
-	CommandPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
+	Keyword    string //  検索語
+	Path       string //  検索対象パス
+	AndOr      string //  and / or の検索メソッド
+	Depth      string //  検索対象パスから検索する階層数
+	CmdKeyword string //  rgaコマンドに渡す and / or padding した検索キーワード
+	CmdPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 }
 
 // Match : Matched contents
@@ -81,17 +81,15 @@ func main() {
 }
 
 // htmlClause : ページに表示する情報
-func htmlClause(word, // 検索キーワード
-	path, //ディレクトリパス
-	depth, // Lvを選択したhtml
-	andor string, // and / or 検索方式ラジオボタン
-) string {
+// depth	  : Lvを選択したhtml
+// andor 	  : and / or 検索方式ラジオボタン
+func (s *Search) htmlClause(depthHTML, andorHTML string) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server` + word + path + `</title>
+			<title>Grep Server` + s.Keyword + s.Path + `</title>
 			</head>
 			  <body>
 			    <form method="get" action="/search">
@@ -100,7 +98,7 @@ func htmlClause(word, // 検索キーワード
 					  placeholder="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"
 					  name="directory-path"
 					  id="directory-path"
-					  value="` + path + `"
+					  value="` + s.Path + `"
 					  size="140"
 					  title="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
@@ -110,7 +108,7 @@ func htmlClause(word, // 検索キーワード
 				  <input type="text"
 					  placeholder="検索キーワードをスペース区切りで入力してください"
 					  name="query"
-					  value="` + word + `"
+					  value="` + s.Keyword + `"
 					  size="100"
 					  title="検索キーワードをスペース区切りで入力してください">
 
@@ -120,10 +118,10 @@ func htmlClause(word, // 検索キーワード
 					  id="depth"
 					  size="1"
 					  title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
-					  ` + depth + `
+					  ` + depthHTML + `
 				  </select>
 				 <!-- and/or -->
-				 ` + andor + `
+				 ` + andorHTML + `
 				 <input type="submit" name="submit" value="検索" title="スペース区切りをandとみなすかorとみなすか選択します">
 			    </form>
 				<table>`)
@@ -133,13 +131,13 @@ func htmlClause(word, // 検索キーワード
 func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	fmt.Fprintf(w, htmlClause("", "", `
-					<option value="1">1</option>
-					<option value="2">2</option>
-					<option value="3">3</option>
-					<option value="4">4</option>
-					<option value="5">5</option>
-	`,
+	s := Search{}
+	fmt.Fprintf(w, s.htmlClause(
+		`<option value="1">1</option>
+		<option value="2">2</option>
+		<option value="3">3</option>
+		<option value="4">4</option>
+		<option value="5">5</option>`,
 		`<input type="radio" value="and" name="andor-search" checked="checked">and
 		 <input type="radio" value="or"  name="andor-search">or`))
 }
@@ -171,21 +169,21 @@ func splitOutByte(b []byte) []string {
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	search := Search{
-		Keyword:        r.FormValue("query"),
-		Path:           r.FormValue("directory-path"),
-		AndOr:          r.FormValue("andor-search"),
-		Depth:          r.FormValue("depth"),
-		CommandKeyword: "",
-		CommandPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
+		Keyword:    r.FormValue("query"),
+		Path:       r.FormValue("directory-path"),
+		AndOr:      r.FormValue("andor-search"),
+		Depth:      r.FormValue("depth"),
+		CmdKeyword: "",
+		CmdPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
 	}
 	if *root != "" {
-		search.CommandPath = strings.TrimPrefix(search.Path, *root)
+		search.CmdPath = strings.TrimPrefix(search.Path, *root)
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CommandPath = strings.ReplaceAll(search.Path, `\`, "/")
+		search.CmdPath = strings.ReplaceAll(search.Path, `\`, "/")
 	}
-	search.CommandKeyword = andorPadding(search.Keyword, search.AndOr)
+	search.CmdKeyword = andorPadding(search.Keyword, search.AndOr)
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %v\n", search)
 	}
@@ -203,8 +201,8 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--max-depth", search.Depth,
 		"--stats",
 
-		search.CommandKeyword,
-		search.CommandPath,
+		search.CmdKeyword,
+		search.CmdPath,
 	}
 	if debug {
 		fmt.Printf("[DEBUG] options: %v\n", opt)
@@ -221,7 +219,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, htmlClause(search.Keyword, search.Path,
+	fmt.Fprintf(w, search.htmlClause(
 		// LvDDリスト
 		// html上で選択した階層数を記憶して遷移先ページでも同じ数字を選択
 		func() string {
