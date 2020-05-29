@@ -39,6 +39,9 @@ type Search struct {
 	CommandPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 }
 
+// Match : Matched contents
+type Match struct{ Line, File int }
+
 /*
 // PathMap : File:ファイルネームを起点として、
 // そのディレクトリと検索語をハイライトした文字列を入れる
@@ -248,15 +251,15 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[DEBUG] result: %v\n", results)
 	}
 	/* 検索結果表示 */
-	type Match struct{ Line, File int }
 	match := Match{}
 	// var contentNum, fileNum int
 	regex := regexp.MustCompile(`^/`)
 	for _, s := range results {
-		if regex.MatchString(s) { // 行数から始まるときはfile contents
+		if regex.MatchString(s) { // '/'から始まるときはfilename
 			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
 			match.File++
-		} else { // 行数から始まらないときはfile name
+			match.Line-- // --heading によりファイル名の前に改行が入る
+		} else { // '/'から始まらないときはfile contents
 			fmt.Fprintf(w, // => http.ResponseWriter
 				`<tr> <td> %s </td> <tr>`, highlightString(
 					html.EscapeString(s),
@@ -266,13 +269,14 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			match.Line++
 		}
 	}
+	match.Line -= 8 // --stats optionによる行数をマイナスカウント
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
 
 	log.Printf(
 		"%4dfiles %6dmatched lines %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		match.File, match.Line, searchTime, search.CommandKeyword, search.Path)
+		match.File, match.Line, searchTime, search.Keyword, search.Path)
 }
 
 // ファイル名をリンク化したhtmlを返す
