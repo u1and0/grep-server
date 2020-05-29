@@ -133,12 +133,10 @@ func (s *Search) htmlClause() string {
 				 <!-- and/or -->
 				 ` +
 			func() string { // and かor 選択されている方に"checked"をつける
-				n := `
-				<input type="radio" value="and" name="andor-search"
-				title="スペース区切りをandとみなすかorとみなすか選択します">and
-				<input type="radio" value="or"  name="andor-search"
-				title="スペース区切りをandとみなすかorとみなすか選択します">or
-				`
+				n := `<input type="radio" value="and" name="andor-search"
+					title="スペース区切りをandとみなすかorとみなすか選択します">and
+					<input type="radio" value="or"  name="andor-search"
+					title="スペース区切りをandとみなすかorとみなすか選択します">or`
 				return strings.Replace(n,
 					"\"andor-search\">"+s.AndOr,
 					"\"andor-search\"checked=\"checked\">"+s.AndOr,
@@ -174,10 +172,10 @@ func andorPadding(s, method string) string {
 }
 
 // システムからbyteで返される結果をsrting リストに格納する
-func splitOutByte(b []byte) []string {
-	results := strings.Split(string(b), "\n")
-	results = results[:len(results)-1] // Pop last element cause \\n
-	return results
+func splitOutByte(b []byte) (a []string) {
+	a = strings.Split(string(b), "\n")
+	a = a[:len(a)-1] // Pop last element cause \\n
+	return
 }
 
 // addResult : Print ripgrep-all result as html contents
@@ -231,15 +229,15 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 	}
 	results := splitOutByte(out)
+	if debug {
+		fmt.Printf("[DEBUG] result: %v\n", results)
+	}
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
 	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
-	if debug {
-		fmt.Printf("[DEBUG] result: %v\n", results)
-	}
 	/* 検索結果表示 */
 	match := Match{}
 	// var contentNum, fileNum int
