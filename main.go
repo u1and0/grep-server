@@ -24,17 +24,20 @@ const (
 
 var (
 	showVersion  bool
+	debug        bool
 	root         = flag.String("r", "", "DB root directory")
 	pathSplitWin = flag.Bool("s", false, "OS path split windows backslash")
 )
 
 // Search : Search query structure
-// Keyword 検索語
-// Path 検索対象パス
-// AndOr and / or の検索メソッド
-// Depth 検索対象パスから検索する階層数
-// CommandPath rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
-type Search struct{ Keyword, Path, AndOr, Depth, CommandPath string }
+type Search struct {
+	Keyword        string //  検索語
+	Path           string //  検索対象パス
+	AndOr          string //  and / or の検索メソッド
+	Depth          string //  検索対象パスから検索する階層数
+	CommandKeyword string //  rgaコマンドに渡す and / or padding した検索キーワード
+	CommandPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
+}
 
 /*
 // PathMap : File:ファイルネームを起点として、
@@ -51,6 +54,7 @@ func main() {
 	// Version info
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
+	flag.BoolVar(&debug, "debug", false, "run as debug mode")
 	flag.Parse()
 	if showVersion {
 		fmt.Println("grep-server", VERSION)
@@ -73,18 +77,18 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
-// htmlClause    : ページに表示する情報
-//  searchWord   : 検索キーワード
-// Path : ディレクトリパス
-//		   depth : Lvを選択したhtml
-// 		   andor : and / or 検索方式ラジオボタン
-func htmlClause(searchWord, Path, depth, andor string) string {
+// htmlClause : ページに表示する情報
+func htmlClause(word, // 検索キーワード
+	path, //ディレクトリパス
+	depth, // Lvを選択したhtml
+	andor string, // and / or 検索方式ラジオボタン
+) string {
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server` + searchWord + Path + `</title>
+			<title>Grep Server` + word + path + `</title>
 			</head>
 			  <body>
 			    <form method="get" action="/search">
@@ -93,7 +97,7 @@ func htmlClause(searchWord, Path, depth, andor string) string {
 					  placeholder="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"
 					  name="directory-path"
 					  id="directory-path"
-					  value="` + Path + `"
+					  value="` + path + `"
 					  size="140"
 					  title="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)">
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
@@ -103,7 +107,7 @@ func htmlClause(searchWord, Path, depth, andor string) string {
 				  <input type="text"
 					  placeholder="検索キーワードをスペース区切りで入力してください"
 					  name="query"
-					  value="` + searchWord + `"
+					  value="` + word + `"
 					  size="100"
 					  title="検索キーワードをスペース区切りで入力してください">
 
@@ -153,7 +157,7 @@ func andorPadding(s, method string) string {
 	return s
 }
 
-// 結果をarray型に格納
+// システムからbyteで返される結果をsrting リストに格納
 func splitOutByte(b []byte) []string {
 	results := strings.Split(string(b), "\n")
 	results = results[:len(results)-1] // Pop last element cause \\n
@@ -164,18 +168,23 @@ func splitOutByte(b []byte) []string {
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
 	search := Search{
-		r.FormValue("query"),
-		r.FormValue("directory-path"),
-		r.FormValue("andor-search"),
-		r.FormValue("depth"),
-		r.FormValue("directory-path"),
+		Keyword:        r.FormValue("query"),
+		Path:           r.FormValue("directory-path"),
+		AndOr:          r.FormValue("andor-search"),
+		Depth:          r.FormValue("depth"),
+		CommandKeyword: "",
+		CommandPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
 	}
 	if *root != "" {
-		search.CommandPath = strings.TrimPrefix(search.CommandPath, *root)
+		search.CommandPath = strings.TrimPrefix(search.Path, *root)
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CommandPath = strings.ReplaceAll(search.CommandPath, `\`, "/")
+		search.CommandPath = strings.ReplaceAll(search.Path, `\`, "/")
+	}
+	search.CommandKeyword = andorPadding(search.Keyword, search.AndOr)
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %v\n", search)
 	}
 
 	// コマンド生成
@@ -189,10 +198,14 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		"--smart-case",
 		// "--ignore-case",
 		"--max-depth", search.Depth,
+		"--stats",
+
+		search.CommandKeyword,
+		search.CommandPath,
 	}
-	searchWord := andorPadding(search.Keyword, search.AndOr)
-	opt = append(opt, searchWord)
-	opt = append(opt, search.CommandPath)
+	if debug {
+		fmt.Printf("[DEBUG] options: %v\n", opt)
+	}
 
 	// File contents search by `rga` command
 	startTime := time.Now()
@@ -231,21 +244,26 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	))
 	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
+	if debug {
+		fmt.Printf("[DEBUG] result: %v\n", results)
+	}
 	/* 検索結果表示 */
-	var contentNum, fileNum int
-	match := regexp.MustCompile(`^\d`)
+	type Match struct{ Line, File int }
+	match := Match{}
+	// var contentNum, fileNum int
+	regex := regexp.MustCompile(`^/`)
 	for _, s := range results {
-		if match.MatchString(s) { // 行数から始まるときはfile contents
+		if regex.MatchString(s) { // 行数から始まるときはfile contents
+			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
+			match.File++
+		} else { // 行数から始まらないときはfile name
 			fmt.Fprintf(w, // => http.ResponseWriter
 				`<tr> <td> %s </td> <tr>`, highlightString(
 					html.EscapeString(s),
 					// メタ文字含まない検索文字のみhighlight
 					strings.Fields(search.Keyword)...),
 			)
-			contentNum++
-		} else { // 行数から始まらないときはfile name
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
-			fileNum++
+			match.Line++
 		}
 	}
 	fmt.Fprintln(w, `</table>
@@ -254,7 +272,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf(
 		"%4dfiles %6dmatched lines %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		fileNum, contentNum, searchTime, searchWord, search.Path)
+		match.File, match.Line, searchTime, search.CommandKeyword, search.Path)
 }
 
 // ファイル名をリンク化したhtmlを返す
@@ -282,11 +300,11 @@ func highlightFilename(s string) string {
 // highlightString : sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
 func highlightString(s string, words ...string) string {
 	for _, w := range words {
-		re := regexp.MustCompile(`((?i)` + w + `)`)
+		re := regexp.MustCompile(`((?i)` + w + `)`) // ((?i)word)
 		found := re.FindString(s)
 		if found != "" {
-			s = strings.Replace(s, found,
-				"<span style=\"background-color:#FFCC00;\">"+found+"</span>", -1)
+			s = strings.ReplaceAll(s, found,
+				"<span style=\"background-color:#FFCC00;\">"+found+"</span>")
 		}
 	}
 	return s
