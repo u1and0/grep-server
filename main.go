@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
-	"time"
 )
 
 const (
@@ -189,7 +188,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[DEBUG] search struct: %v\n", search)
 	}
 	if *root != "" {
-		search.CmdPath = strings.TrimPrefix(search.Path, *root)
+		search.CmdPath = strings.TrimPrefix(search.CmdPath, *root)
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
@@ -221,40 +220,37 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// File contents search by `rga` command
-	startTime := time.Now()
 	out, err := exec.Command("rga", opt...).Output()
-	searchTime := float64((time.Since(startTime)).Nanoseconds()) / float64(time.Millisecond)
 	if err != nil {
 		log.Println(err)
 	}
-	results := splitOutByte(out)
+	outstr := splitOutByte(out)
 	if debug {
-		fmt.Printf("[DEBUG] result: %v\n", results)
+		fmt.Printf("[DEBUG] result: %v\n", outstr)
 	}
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
-
 	/* 検索結果表示 */
-	c := htmlContents(results, search.Keyword)
+	result := htmlContents(outstr, search.Keyword)
+
+	// Ssearch Stats
 	fmt.Fprintf(w, "<h4>")
-	for _, h := range c.Stats {
+	for _, h := range result.Stats {
 		fmt.Fprintf(w, h)
 		fmt.Fprintf(w, "<br>")
 	}
 	fmt.Fprintf(w, "</h4>")
-	for _, h := range c.Contents {
-		fmt.Fprintf(w, h)
+	for _, h := range result.Contents {
+		fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
 	}
-
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
-
 	log.Printf(
-		"%s %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		strings.Join(c.Stats, " "), searchTime, search.Keyword, search.Path)
+		"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		strings.Join(result.Stats, " "), search.Keyword, search.Path)
 }
 
 // ファイル名をリンク化したhtmlを返す
@@ -308,7 +304,7 @@ func htmlContents(a []string, key string) Result {
 					// メタ文字含まない検索文字のみhighlight
 					strings.Fields(key)...)
 			}
-			r.Contents = append(r.Contents, `<tr> <td>`+h+`</td> <tr>`)
+			r.Contents = append(r.Contents, h)
 		} else {
 			r.Stats = append(r.Stats, s)
 		}
