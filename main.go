@@ -88,25 +88,25 @@ func main() {
 
 // htmlClause : ページに表示する情報
 func (s *Search) htmlClause() string {
-	pathtext := `検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)`
-	keytext := `検索キーワードをスペース区切りで入力してください`
+	pathtext := `"検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"`
+	keytext := `"検索キーワードをスペース区切りで入力してください"`
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server` + s.Keyword + s.Path + `</title>
+			<title>` + strings.Join([]string{"Grep Server", s.Keyword, s.Path}, " ") + `</title>
 			</head>
 			  <body>
 			    <form method="get" action="/search">
 				  <!-- directory -->
 				  <input type="text"
-					  placeholder="` + pathtext + `"
+					  placeholder=` + pathtext + `
 					  name="directory-path"
 					  id="directory-path"
 					  value="` + s.Path + `"
 					  size="140"
-					  title="` + pathtext + `">
+					  title=` + pathtext + `>
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 
@@ -116,7 +116,7 @@ func (s *Search) htmlClause() string {
 					  name="query"
 					  value="` + s.Keyword + `"
 					  size="100"
-					  title="` + keytext + `">
+					  title=` + keytext + `>
 
 				   <!-- depth -->
 				   Lv
