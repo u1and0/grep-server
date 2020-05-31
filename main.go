@@ -39,19 +39,11 @@ type Search struct {
 	CmdPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 }
 
-// Match : Matched contents
-type Match struct{ Line, File int }
-
-/*
-// PathMap : File:ファイルネームを起点として、
-// そのディレクトリと検索語をハイライトした文字列を入れる
-type PathMap struct {
-	File      string
-	Line      string
-	Dir       string
-	Highlight string
+// Result : rga結果, Statsと結果に別れる
+type Result struct {
+	Stats    []string
+	Contents []string
 }
-*/
 
 func main() {
 	// Version info
@@ -65,7 +57,7 @@ func main() {
 	}
 	// Command check
 	if _, err := exec.LookPath("rga"); err != nil {
-		log.Fatal(err)
+		log.Fatalf("[ERROR]" + err.Error())
 	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -81,28 +73,26 @@ func main() {
 }
 
 // htmlClause : ページに表示する情報
-// depth	  : Lvを選択したhtml
-// andor 	  : and / or 検索方式ラジオボタン
 func (s *Search) htmlClause() string {
-	pathtext := `検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)`
-	keytext := `検索キーワードをスペース区切りで入力してください`
+	pathtext := `"検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"`
+	keytext := `"検索キーワードをスペース区切りで入力してください"`
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
 			<head>
 			<meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
-			<title>Grep Server` + s.Keyword + s.Path + `</title>
+			<title>` + strings.Join([]string{"Grep Server", s.Keyword, s.Path}, " ") + `</title>
 			</head>
 			  <body>
 			    <form method="get" action="/search">
 				  <!-- directory -->
 				  <input type="text"
-					  placeholder="` + pathtext + `"
+					  placeholder=` + pathtext + `
 					  name="directory-path"
 					  id="directory-path"
 					  value="` + s.Path + `"
 					  size="140"
-					  title="` + pathtext + `">
+					  title=` + pathtext + `>
 				  <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
 				  <br>
 
@@ -112,7 +102,7 @@ func (s *Search) htmlClause() string {
 					  name="query"
 					  value="` + s.Keyword + `"
 					  size="100"
-					  title="` + keytext + `">
+					  title=` + keytext + `>
 
 				   <!-- depth -->
 				   Lv
@@ -133,13 +123,15 @@ func (s *Search) htmlClause() string {
 				 <!-- and/or -->
 				 ` +
 			func() string { // and かor 選択されている方に"checked"をつける
-				n := `<input type="radio" value="and" name="andor-search"
-					title="スペース区切りをandとみなすかorとみなすか選択します">and
-					<input type="radio" value="or"  name="andor-search"
-					title="スペース区切りをandとみなすかorとみなすか選択します">or`
+				n := `<input type="radio" value="and"
+					title="スペース区切りをandとみなすかorとみなすか選択します"
+					name="andor-search">and
+					<input type="radio" value="or"
+					title="スペース区切りをandとみなすかorとみなすか選択します"
+					name="andor-search">or`
 				return strings.Replace(n,
 					"\"andor-search\">"+s.AndOr,
-					"\"andor-search\"checked=\"checked\">"+s.AndOr,
+					"\"andor-search\" checked=\"checked\">"+s.AndOr,
 					1)
 			}() + `
 				 <input type="submit" name="submit" value="検索">
@@ -152,6 +144,9 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
 	s := Search{Depth: "1", AndOr: "and"}
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %v\n", s)
+	}
 	fmt.Fprintf(w, s.htmlClause())
 }
 
@@ -166,7 +161,8 @@ func andorPadding(s, method string) string {
 		s = strings.Join(ss, method)
 		s = "(" + s + ")"
 	} else {
-		log.Fatalf("an error format selected %s", method)
+		log.Fatalf("[ERROR] an error format selected %s."+
+			" Must be and/or either.", method)
 	}
 	return s
 }
@@ -189,12 +185,15 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		CmdKeyword: "",
 		CmdPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
 	}
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %v\n", search)
+	}
 	if *root != "" {
 		search.CmdPath = strings.TrimPrefix(search.Path, *root)
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CmdPath = strings.ReplaceAll(search.Path, `\`, "/")
+		search.CmdPath = strings.ReplaceAll(search.CmdPath, `\`, "/")
 	}
 	search.CmdKeyword = andorPadding(search.Keyword, search.AndOr)
 	if debug {
@@ -236,35 +235,26 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
-	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
 	/* 検索結果表示 */
-	match := Match{}
-	// var contentNum, fileNum int
-	regex := regexp.MustCompile(`^[/\\]`)
-	for _, s := range results {
-		if regex.MatchString(s) { // '/'から始まるときはfilename
-			fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
-			match.File++
-			match.Line-- // --heading によりファイル名の前に改行が入るため
-		} else { // '/'から始まらないときはfile contents
-			fmt.Fprintf(w, // => http.ResponseWriter
-				`<tr> <td> %s </td> <tr>`, highlightString(
-					html.EscapeString(s),
-					// メタ文字含まない検索文字のみhighlight
-					strings.Fields(search.Keyword)...),
-			)
-			match.Line++
-		}
+	c := htmlContents(results, search.Keyword)
+	fmt.Fprintf(w, "<h4>")
+	for _, h := range c.Stats {
+		fmt.Fprintf(w, h)
+		fmt.Fprintf(w, "<br>")
 	}
-	match.Line -= 8 // --stats optionによる行数をマイナスカウント
+	fmt.Fprintf(w, "</h4>")
+	for _, h := range c.Contents {
+		fmt.Fprintf(w, h)
+	}
+
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
 
 	log.Printf(
-		"%4dfiles %6dmatched lines %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		match.File, match.Line, searchTime, search.Keyword, search.Path)
+		"%s %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		strings.Join(c.Stats, " "), searchTime, search.Keyword, search.Path)
 }
 
 // ファイル名をリンク化したhtmlを返す
@@ -300,4 +290,28 @@ func highlightString(s string, words ...string) string {
 		}
 	}
 	return s
+}
+
+func htmlContents(a []string, key string) Result {
+	var (
+		h string // highlight string
+		r = Result{}
+		x = regexp.MustCompile(`^[/\\]`)
+	)
+	for i, s := range a {
+		if i < len(a)-8 {
+			if x.MatchString(s) { // '/'から始まるときはfilename
+				h = highlightFilename(s)
+			} else { // '/'から始まらないときはfile contents
+				h = highlightString(
+					html.EscapeString(s),
+					// メタ文字含まない検索文字のみhighlight
+					strings.Fields(key)...)
+			}
+			r.Contents = append(r.Contents, `<tr> <td>`+h+`</td> <tr>`)
+		} else {
+			r.Stats = append(r.Stats, s)
+		}
+	}
+	return r
 }
