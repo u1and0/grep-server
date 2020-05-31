@@ -207,7 +207,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	if *pathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CmdPath = strings.ReplaceAll(search.Path, `\`, "/")
+		search.CmdPath = strings.ReplaceAll(search.CmdPath, `\`, "/")
 	}
 	search.CmdKeyword = andorPadding(search.Keyword, search.AndOr)
 	if debug {
