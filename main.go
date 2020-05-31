@@ -39,25 +39,11 @@ type Search struct {
 	CmdPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 }
 
-// Match : Matched contents
-// type Match struct{ Line, File int }
-
 // Result : rga結果, Statsと結果に別れる
 type Result struct {
 	Stats    []string
 	Contents []string
 }
-
-/*
-// PathMap : File:ファイルネームを起点として、
-// そのディレクトリと検索語をハイライトした文字列を入れる
-type PathMap struct {
-	File      string
-	Line      string
-	Dir       string
-	Highlight string
-}
-*/
 
 func main() {
 	// Version info
@@ -249,38 +235,19 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
-	fmt.Fprintf(w, `<h4> 検索にかかった時間: %.3fmsec </h4>`, searchTime)
 
 	/* 検索結果表示 */
-	// match := Match{}
-
-	/*
-		for _, s := range results {
-			if regex.MatchString(s) { // '/'から始まるときはfilename
-				fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
-				// match.File++
-				// match.Line-- // --heading によりファイル名の前に改行が入るため
-			} else { // '/'から始まらないときはfile contents
-				fmt.Fprintf(w, // => http.ResponseWriter
-					`<tr> <td> %s </td> <tr>`, highlightString(
-						html.EscapeString(s),
-						// メタ文字含まない検索文字のみhighlight
-						strings.Fields(search.Keyword)...),
-				)
-				// match.Line++
-			}
-		}
-	*/
-
 	c := htmlContents(results, search.Keyword)
+	fmt.Fprintf(w, "<h4>")
 	for _, h := range c.Stats {
 		fmt.Fprintf(w, h)
+		fmt.Fprintf(w, "<br>")
 	}
+	fmt.Fprintf(w, "</h4>")
 	for _, h := range c.Contents {
 		fmt.Fprintf(w, h)
 	}
 
-	// match.Line -= 8 // --stats optionによる行数をマイナスカウント
 	fmt.Fprintln(w, `</table>
 				</body>
 				</html>`)
@@ -288,8 +255,6 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	log.Printf(
 		"%s %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
 		strings.Join(c.Stats, " "), searchTime, search.Keyword, search.Path)
-	// "%4dfiles %6dmatched lines %3.3fmsec Keyword: [ %-30s ] Path: [ %-50s ]\n",
-	// match.File, match.Line, searchTime, search.Keyword, search.Path)
 }
 
 // ファイル名をリンク化したhtmlを返す
@@ -337,25 +302,15 @@ func htmlContents(a []string, key string) Result {
 		if i < len(a)-8 {
 			if x.MatchString(s) { // '/'から始まるときはfilename
 				h = highlightFilename(s)
-				// fmt.Fprintf(w, `<tr> <td> %s </td> <tr>`, highlightFilename(s))
-				// match.File++
-				// match.Line-- // --heading によりファイル名の前に改行が入るため
 			} else { // '/'から始まらないときはfile contents
 				h = highlightString(
 					html.EscapeString(s),
 					// メタ文字含まない検索文字のみhighlight
 					strings.Fields(key)...)
-				// fmt.Fprintf(w, // => http.ResponseWriter
-				// 	`<tr> <td> %s </td> <tr>`, highlightString(
-				// 		html.EscapeString(s),
-				// 		// メタ文字含まない検索文字のみhighlight
-				// 		strings.Fields(search.Keyword)...),
-				// )
-				// match.Line++
-				r.Contents = append(r.Contents, `<tr> <td>`+h+`</td> <tr>`)
 			}
+			r.Contents = append(r.Contents, `<tr> <td>`+h+`</td> <tr>`)
 		} else {
-			r.Stats = append(r.Stats, `<tr> <td>`+s+`</td> <tr>`)
+			r.Stats = append(r.Stats, s)
 		}
 	}
 	return r
