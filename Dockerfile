@@ -4,19 +4,11 @@
 # ```
 
 # BUILD IMAGE
-FROM golang:1.14.3-buster AS builder
-# Install ripgrep-all
-WORKDIR /tmp
-RUN curl -fsSL https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz | tar -xzv -C .
-# Install dependencies package
-RUN apt update &&\
-    apt install -y ripgrep \
-                pandoc \
-                poppler-utils \
-                ffmpeg \
-                cargo
+FROM u1and0/archlinux AS builder
+COPY mirrorlist /etc/pacman.d/mirrorlist
+RUN yay -Syu --noconfirm ripgrep-all
 # Build grep-server
-COPY ./main.go /go/src/github.com/u1and0/grep-server/main.go
+COPY main.go /go/src/github.com/u1and0/grep-server/main.go
 WORKDIR /go/src/github.com/u1and0/grep-server
 # For go module using go-pipeline
 # ENV GO111MODULE=on
@@ -24,10 +16,8 @@ WORKDIR /go/src/github.com/u1and0/grep-server
 RUN go build -o /go/bin/grep-server
 
 # RUN IMAGE
-FROM debian:buster as runnner
-WORKDIR /
-COPY --from=builder /tmp/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl/rga /usr/bin/rga
-COPY --from=builder /tmp/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl/rga-preproc /usr/bin/rga-preproc
+FROM archlinux/base as runnner
+COPY --from=builder /usr/bin/ripgrep-all /usr/bin/ripgrep-all
 COPY --from=builder /usr/bin/rg /usr/bin/rg
 COPY --from=builder /usr/bin/pandoc /usr/bin/pandoc
 COPY --from=builder /usr/bin/pdftotext /usr/bin/pdftotext
