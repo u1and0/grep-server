@@ -133,7 +133,21 @@ func (s *Search) htmlClause() string {
 					"\"andor-search\" checked=\"checked\">"+s.AndOr,
 					1)
 			}() + `
-				 <input type="submit" name="submit" value="検索">
+				 <!-- encoding -->
+				 ` +
+			func() string { // and かor 選択されている方に"checked"をつける
+				n := `<input type="radio" value="and"
+					title="スペース区切りをandとみなすかorとみなすか選択します"
+					name="andor-search">and
+					<input type="radio" value="or"
+					title="スペース区切りをandとみなすかorとみなすか選択します"
+					name="andor-search">or`
+				return strings.Replace(n,
+					"\"andor-search\">"+s.AndOr,
+					"\"andor-search\" checked=\"checked\">"+s.AndOr,
+					1)
+			}() + `
+				 <input type="submit" name="submit" value="Search">
 			    </form>
 				<table>`)
 }
