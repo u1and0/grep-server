@@ -141,10 +141,10 @@ func (s *Search) htmlClause() string {
 					title="文字エンコードを指定します。">
 				` +
 			func() string { // 文字エンコーディングはデフォルトUTF-8
-				n := `<option value="utf-8">UTF-8</option>
-					<option value="shift-jis">SHIFT-JIS</option>
-					<option value="euc-jp">EUC-JP</option>
-					<option value="iso-2022-jp">ISO-2022-JP</option>`
+				n := `<option value="UTF-8">UTF-8</option>
+					<option value="SHIFT-JIS">SHIFT-JIS</option>
+					<option value="EUC-JP">EUC-JP</option>
+					<option value="ISO-2022-JP">ISO-2022-JP</option>`
 				return strings.Replace(n, ">"+s.Encoding, " selected>"+s.Encoding, 1)
 			}() + `
 				  </select>
@@ -159,7 +159,7 @@ func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
 	s := Search{Depth: "1", AndOr: "and", Encoding: "utf-8"}
 	if debug {
-		fmt.Printf("[DEBUG] search struct: %v\n", s)
+		fmt.Printf("[DEBUG] search struct: %+v\n", s)
 	}
 	fmt.Fprintf(w, s.htmlClause())
 }
@@ -201,7 +201,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		CmdPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
 	}
 	if debug {
-		fmt.Printf("[DEBUG] search struct: %v\n", search)
+		fmt.Printf("[DEBUG] search struct: %+v\n", search)
 	}
 	if *root != "" {
 		search.CmdPath = strings.TrimPrefix(search.CmdPath, *root)
@@ -212,7 +212,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	search.CmdKeyword = andorPadding(search.Keyword, search.AndOr)
 	if debug {
-		fmt.Printf("[DEBUG] search struct: %v\n", search)
+		fmt.Printf("[DEBUG] search struct: %+v\n", search)
 	}
 
 	// コマンド生成
@@ -243,7 +243,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	outstr := splitOutByte(out)
 	if debug {
-		fmt.Printf("[DEBUG] result: %v\n", outstr)
+		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
 
 	/* html表示 */
