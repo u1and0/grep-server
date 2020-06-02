@@ -141,10 +141,10 @@ func (s *Search) htmlClause() string {
 					title="文字エンコードを指定します。">
 				` +
 			func() string { // 文字エンコーディングはデフォルトUTF-8
-				n := `<option value="UTF-8">utf-8</option>
-					<option value="SHIFT-JIS">shift-jis</option>
-					<option value="EUC-JP">euc-jp</option>
-					<option value="ISO-2022-JP">iso-2022-jp</option>`
+				n := `<option value="utf-8">UTF-8</option>
+					<option value="shift-jis">SHIFT-JIS</option>
+					<option value="euc-jp">EUC-JP</option>
+					<option value="iso-2022-jp">ISO-2022-JP</option>`
 				return strings.Replace(n, ">"+s.Encoding, " selected>"+s.Encoding, 1)
 			}() + `
 				  </select>
