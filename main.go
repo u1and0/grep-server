@@ -34,6 +34,7 @@ type Search struct {
 	Path       string //  検索対象パス
 	AndOr      string //  and / or の検索メソッド
 	Depth      string //  検索対象パスから検索する階層数
+	Encoding   string //  ファイルエンコード
 	CmdKeyword string //  rgaコマンドに渡す and / or padding した検索キーワード
 	CmdPath    string //  rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 }
@@ -134,29 +135,29 @@ func (s *Search) htmlClause() string {
 					1)
 			}() + `
 				 <!-- encoding -->
-				 ` +
-			func() string { // and かor 選択されている方に"checked"をつける
-				n := `<input type="radio" value="and"
-					title="スペース区切りをandとみなすかorとみなすか選択します"
-					name="andor-search">and
-					<input type="radio" value="or"
-					title="スペース区切りをandとみなすかorとみなすか選択します"
-					name="andor-search">or`
-				return strings.Replace(n,
-					"\"andor-search\">"+s.AndOr,
-					"\"andor-search\" checked=\"checked\">"+s.AndOr,
-					1)
+				 <select name="encoding"
+					id="encoding"
+					size="1"
+					title="文字エンコードを指定します。">
+				` +
+			func() string { // 文字エンコーディングはデフォルトUTF-8
+				n := `<option value="UTF-8">utf-8</option>
+					<option value="SHIFT-JIS">shift-jis</option>
+					<option value="EUC-JP">euc-jp</option>
+					<option value="ISO-2022-JP">iso-2022-jp</option>`
+				return strings.Replace(n, ">"+s.Encoding, " selected>"+s.Encoding, 1)
 			}() + `
-				 <input type="submit" name="submit" value="Search">
-			    </form>
-				<table>`)
+				  </select>
+				 ` +
+			`<input type="submit" name="submit" value="Search">
+			    </form>`)
 }
 
 // showInit : Top page html
 func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	s := Search{Depth: "1", AndOr: "and"}
+	s := Search{Depth: "1", AndOr: "and", Encoding: "utf-8"}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %v\n", s)
 	}
@@ -195,6 +196,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		Path:       r.FormValue("directory-path"),
 		AndOr:      r.FormValue("andor-search"),
 		Depth:      r.FormValue("depth"),
+		Encoding:   r.FormValue("encoding"),
 		CmdKeyword: "",
 		CmdPath:    r.FormValue("directory-path"), // 初期値はPathと同じ
 	}
@@ -225,6 +227,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		// "--ignore-case",
 		"--max-depth", search.Depth,
 		"--stats",
+		"--encoding", search.Encoding,
 
 		search.CmdKeyword,
 		search.CmdPath,
@@ -256,6 +259,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "<br>")
 	}
 	fmt.Fprintf(w, "</h4>")
+	fmt.Fprintln(w, `<table>`)
 	for _, h := range result.Contents {
 		fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
 	}
