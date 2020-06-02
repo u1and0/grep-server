@@ -6,9 +6,10 @@
 ![Demo](https://image-url.gif)
 
 ## Description
-ウェブブラウザからの入力で指定ディレクトリ下にあるファイル内の文字列に対して正規表現検索[^1]を行い、結果をhtmlにしてウェブブラウザに表示します。
+ウェブブラウザからの入力で指定ディレクトリ下にあるファイル内の文字列に対して正規表現検索を行い、結果をhtmlにしてウェブブラウザに表示します。
 
-[^1]: grep (Globally search for the Regular Expression and Print) 検索を行います。正確には、検索に使用するコマンドはgrepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を使います。
+grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検索に使います。
+
 
 ## Requirement
 * [ripgrep-all](https://github.com/phiresky/ripgrep-all)
@@ -35,23 +36,38 @@
 
 ## Features
 
-### オプション
+### コマンドオプション
 
 ```grep-server -h
--r string
-		DB root directory
--s    OS path split windows backslash
--v    show version
--version
-		show version
+Usage of /usr/bin/grep-server:
+  -E string
+        Set default encoding (default "UTF-8")
+  -debug
+        run as debug mode
+  -r string
+        Append root directory path
+  -s    OS path split windows backslash
+  -v    show version
+  -version
+        show version
 ```
 
 ### 正規表現の例
 
 table1: 正規表現の例
+|<div align='left'> 検索キーワード   |<div align='left'>  マッチする行     |
+|---------|----------|
+|<div align='left'>   apple␣コップ␣xlsx    |<div align='left'>   同じ行に「apple」と「コップ」と「xlsx」が含まれる, 大文字小文字は無視    |
+|<div align='left'>   Apple␣banana |<div align='left'>   「Apple」と「banana」が含まれる, 大文字小文字は区別する    |
+|<div align='left'>   .(doc\|xls)   |<div align='left'>   「.doc」または「.xls」が含まれる, 大文字小文字は無視 |
+|<div align='left'>   jpe?g|<div align='left'>「jpeg」または「jpg」が含まれる, 大文字小文字は無視  |
+|<div align='left'>   SW5␣34[bd] |<div align='left'> 「SW5」と「34b」、または「SW5」と「34d」が含まれる  |
+|<div align='left'>   SW5␣34[b-d]  |<div align='left'> 「SW5」と「34b」、または「SW5」と「34c」、または「SW5」と「34d」が含まれる  |
+|<div align='left'>   2[6-9]SS  |<div align='left'> 「26SS」「27SS」, 「28SS」, 「29SS」のどれかが含まれる  |
 
 
-## 検索オプション
+
+### 検索オプション
 * フォルダパスをフルパスで入力します。
   * ローカルドライブ外のルートパスはデプロイ時に`-r`(root)オプションで指定することができます。
 * case sensitiveはsmart caseが有効です。
@@ -63,14 +79,12 @@ table1: 正規表現の例
   * and検索ではスペースで区切ったキーワードが全て入った行のみを結果として返します。
   * or検索ではスペースで区切ったキーワードのどれかが入った行を結果として返します。
 
-### log
+### 検索ログ
 
 1検索につき1行の検索履歴を/var/log/grep-server.logに記録します。
 
 ```
-2020/05/27 08:08:41   13files    557matched lines 22.350msec Keyword: [ \d\d3                          ] Path: [ /home/u1and0/Dropbox/Document/統計 ]
-2020/05/27 08:08:49   15files    638matched lines 23.324msec Keyword: [ \d\d5                          ] Path: [ /home/u1and0/Dropbox/Document/統計 ]
-2020/05/27 08:17:58    0files      0matched lines 14.906msec Keyword: [ import                         ] Path: [ /home/u1and0/Program/go/srg/u1and0 ]
+2020/06/02 21:07:15 23 matches 23 matched lines 1 files contained matches 415 files searched 997 bytes printed 14123624 bytes searched 0.021035 seconds spent searching 0.033567 seconds Keyword: [ 机 カタログ                          ] Path: [ /home/u1and0/Dropbox/Document
 ```
 
 table2: 検索ログの例
@@ -91,9 +105,20 @@ table2: 検索ログの例
 $ git clone https://github.com/u1and0/grep-server
 ```
 
+or use docker
+
 ```
 $ docker pull u1and0/grep-server
 ```
+
+
+## Dependencies
+
+* ripgrep
+* pandoc
+* poppler-utils
+* ffmpeg
+* cargo
 
 ## Test
 
