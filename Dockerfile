@@ -11,9 +11,6 @@ RUN yay -Syu --noconfirm ripgrep-all go
 USER root
 COPY main.go /go/src/github.com/u1and0/grep-server/main.go
 WORKDIR /go/src/github.com/u1and0/grep-server
-# For go module using go-pipeline
-# ENV GO111MODULE=on
-# RUN apk --update --no-cache add git &&\
 RUN go build -o /go/bin/grep-server
 
 # RUN IMAGE

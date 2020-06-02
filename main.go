@@ -19,12 +19,15 @@ const (
 	VERSION = "0.0.0"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
+	// STATSLENGTH : rg --stats の行数
+	STATSLENGTH = 8
 )
 
 var (
 	showVersion  bool
 	debug        bool
-	root         = flag.String("r", "", "DB root directory")
+	root         = flag.String("r", "", "Append root directory path")
+	encoding     = flag.String("E", "UTF-8", "Set default encoding")
 	pathSplitWin = flag.Bool("s", false, "OS path split windows backslash")
 )
 
@@ -101,7 +104,7 @@ func (s *Search) htmlClause() string {
 					  placeholder=` + keytext + `
 					  name="query"
 					  value="` + s.Keyword + `"
-					  size="100"
+					  size="90"
 					  title=` + keytext + `>
 
 				   <!-- depth -->
@@ -157,7 +160,7 @@ func (s *Search) htmlClause() string {
 func showInit(w http.ResponseWriter, r *http.Request) {
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	s := Search{Depth: "1", AndOr: "and", Encoding: "utf-8"}
+	s := Search{Depth: "1", AndOr: "and", Encoding: *encoding}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", s)
 	}
@@ -310,10 +313,10 @@ func htmlContents(a []string, key string) Result {
 	var (
 		h string // highlight string
 		r = Result{}
-		x = regexp.MustCompile(`^[/\\]`)
+		x = regexp.MustCompile(`^/`)
 	)
 	for i, s := range a {
-		if i < len(a)-8 {
+		if i < len(a)-STATSLENGTH {
 			if x.MatchString(s) { // '/'から始まるときはfilename
 				h = highlightFilename(s)
 			} else { // '/'から始まらないときはfile contents
