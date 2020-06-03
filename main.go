@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"flag"
 	"fmt"
 	"html"
@@ -17,6 +18,8 @@ import (
 const (
 	// VERSION : version
 	VERSION = "0.0.0"
+	// EXE : Search command
+	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
 	// STATSLENGTH : rg --stats の行数
@@ -191,6 +194,46 @@ func splitOutByte(b []byte) (a []string) {
 	return
 }
 
+func (s *Search) grep() []string {
+	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %+v\n", s)
+	}
+
+	// コマンド生成
+	opt := []string{ // rga/rg options
+		"--line-number",
+		"--max-columns", "160",
+		"--max-columns-preview",
+		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--smart-case",
+		// "--ignore-case",
+		"--max-depth", s.Depth,
+		"--stats",
+		"--encoding", s.Encoding,
+
+		s.CmdKeyword,
+		s.CmdPath,
+	}
+	if debug {
+		fmt.Printf("[DEBUG] options: %v\n", opt)
+	}
+
+	// File contents search by `rga` command
+	out, err := exec.Command(EXE, opt...).Output()
+	if err != nil {
+		log.Println(err)
+	}
+	outstr := splitOutByte(out)
+	if debug {
+		fmt.Printf("[DEBUG] result: %+v\n", outstr)
+	}
+	return outstr
+
+}
+
 // addResult : Print ripgrep-all result as html contents
 func addResult(w http.ResponseWriter, r *http.Request) {
 	// Modify query
@@ -213,65 +256,40 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
 		search.CmdPath = strings.ReplaceAll(search.CmdPath, `\`, "/")
 	}
-	search.CmdKeyword = andorPadding(search.Keyword, search.AndOr)
-	if debug {
-		fmt.Printf("[DEBUG] search struct: %+v\n", search)
-	}
-
-	// コマンド生成
-	opt := []string{ // rga/rg options
-		"--line-number",
-		"--max-columns", "160",
-		"--max-columns-preview",
-		"--heading",
-		"--color", "never",
-		"--no-binary",
-		"--smart-case",
-		// "--ignore-case",
-		"--max-depth", search.Depth,
-		"--stats",
-		"--encoding", search.Encoding,
-
-		search.CmdKeyword,
-		search.CmdPath,
-	}
-	if debug {
-		fmt.Printf("[DEBUG] options: %v\n", opt)
-	}
-
-	// File contents search by `rga` command
-	out, err := exec.Command("rga", opt...).Output()
-	if err != nil {
-		log.Println(err)
-	}
-	outstr := splitOutByte(out)
-	if debug {
-		fmt.Printf("[DEBUG] result: %+v\n", outstr)
-	}
 
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
-	/* 検索結果表示 */
-	result := htmlContents(outstr, search.Keyword)
-
-	// Ssearch Stats
-	fmt.Fprintf(w, "<h4>")
-	for _, h := range result.Stats {
-		fmt.Fprintf(w, h)
-		fmt.Fprintf(w, "<br>")
+	if search.Keyword == "" {
+		err := errors.New("検索キーワードがありません")
+		fmt.Fprint(w, search.htmlClause())
+		fmt.Fprintf(w, `<h4>
+							%s
+						</h4>`, err)
+		log.Printf(
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			err, search.Keyword, search.Path)
+	} else {
+		/* 検索結果表示 */
+		result := htmlContents(search.grep(), search.Keyword)
+		// Search Stats
+		fmt.Fprintf(w, "<h4>")
+		for _, h := range result.Stats {
+			fmt.Fprintf(w, h)
+			fmt.Fprintf(w, "<br>")
+		}
+		fmt.Fprintf(w, "</h4>")
+		fmt.Fprintln(w, `<table>`)
+		for _, h := range result.Contents {
+			fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
+		}
+		fmt.Fprintln(w, `</table>`)
+		log.Printf(
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			strings.Join(result.Stats, " "), search.Keyword, search.Path)
 	}
-	fmt.Fprintf(w, "</h4>")
-	fmt.Fprintln(w, `<table>`)
-	for _, h := range result.Contents {
-		fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
-	}
-	fmt.Fprintln(w, `</table>
-				</body>
-				</html>`)
-	log.Printf(
-		"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		strings.Join(result.Stats, " "), search.Keyword, search.Path)
+	fmt.Fprintln(w, `</body>
+					</html>`)
 }
 
 // ファイル名をリンク化したhtmlを返す
