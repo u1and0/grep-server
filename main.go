@@ -194,7 +194,7 @@ func splitOutByte(b []byte) (a []string) {
 	return
 }
 
-func (s *Search) grep() []string {
+func (s *Search) grep() ([]string, error) {
 	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", s)
@@ -223,14 +223,11 @@ func (s *Search) grep() []string {
 
 	// File contents search by `rga` command
 	out, err := exec.Command(EXE, opt...).Output()
-	if err != nil {
-		log.Println(err)
-	}
 	outstr := splitOutByte(out)
 	if debug {
 		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
-	return outstr
+	return outstr, err
 
 }
 
@@ -271,7 +268,11 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			err, search.Keyword, search.Path)
 	} else {
 		/* 検索結果表示 */
-		result := htmlContents(search.grep(), search.Keyword)
+		outstr, err := search.grep()
+		if err != nil {
+			log.Println(err)
+		}
+		result := htmlContents(outstr, search.Keyword)
 		// Search Stats
 		fmt.Fprintf(w, "<h4>")
 		for _, h := range result.Stats {
