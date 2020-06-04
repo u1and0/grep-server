@@ -32,6 +32,7 @@ var (
 	root         = flag.String("r", "", "Append root directory path")
 	encoding     = flag.String("E", "UTF-8", "Set default encoding")
 	pathSplitWin = flag.Bool("s", false, "OS path split windows backslash")
+	result       = Result{}
 )
 
 // Search : Search query structure
@@ -68,7 +69,7 @@ func main() {
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Fatalf("[ERROR] Cannot open logfile " + err.Error())
+		log.Fatalf("[ERROR] " + err.Error())
 	}
 	defer logfile.Close()
 	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
@@ -194,41 +195,50 @@ func splitOutByte(b []byte) (a []string) {
 	return
 }
 
-func (s *Search) grep() ([]string, error) {
-	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
-	if debug {
-		fmt.Printf("[DEBUG] search struct: %+v\n", s)
-	}
+func (s *Search) grep() (outstr []string, err error) {
+	if s.Keyword == "" {
+		err = errors.New("検索キーワードがありません")
+	} else if s.Path == "" {
+		err = errors.New("ディレクトリパスがありません")
+		// Directory check
+	} else if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
+		err = errors.New("ディレクトリパス" + s.CmdPath + "がありません")
+	} else {
+		var out []byte
+		s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
+		if debug {
+			fmt.Printf("[DEBUG] search struct: %+v\n", s)
+		}
 
-	// コマンド生成
-	opt := []string{ // rga/rg options
-		"--line-number",
-		"--max-columns", "160",
-		"--max-columns-preview",
-		"--heading",
-		"--color", "never",
-		"--no-binary",
-		"--smart-case",
-		// "--ignore-case",
-		"--max-depth", s.Depth,
-		"--stats",
-		"--encoding", s.Encoding,
+		// コマンド生成
+		opt := []string{ // rga/rg options
+			"--line-number",
+			"--max-columns", "160",
+			"--max-columns-preview",
+			"--heading",
+			"--color", "never",
+			"--no-binary",
+			"--smart-case",
+			// "--ignore-case",
+			"--max-depth", s.Depth,
+			"--stats",
+			"--encoding", s.Encoding,
 
-		s.CmdKeyword,
-		s.CmdPath,
-	}
-	if debug {
-		fmt.Printf("[DEBUG] options: %v\n", opt)
-	}
+			s.CmdKeyword,
+			s.CmdPath,
+		}
+		if debug {
+			fmt.Printf("[DEBUG] options: %v\n", opt)
+		}
 
-	// File contents search by `rga` command
-	out, err := exec.Command(EXE, opt...).Output()
-	outstr := splitOutByte(out)
-	if debug {
-		fmt.Printf("[DEBUG] result: %+v\n", outstr)
+		// File contents search by `rga` command
+		out, err = exec.Command(EXE, opt...).Output()
+		outstr = splitOutByte(out)
+		if debug {
+			fmt.Printf("[DEBUG] result: %+v\n", outstr)
+		}
 	}
 	return outstr, err
-
 }
 
 // addResult : Print ripgrep-all result as html contents
@@ -257,22 +267,13 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
-	if search.Keyword == "" {
-		err := errors.New("検索キーワードがありません")
-		fmt.Fprint(w, search.htmlClause())
-		fmt.Fprintf(w, `<h4>
-							%s
-						</h4>`, err)
-		log.Printf(
-			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
-			err, search.Keyword, search.Path)
+	/* 検索結果表示 */
+	outstr, err := search.grep()
+	if err != nil {
+		fmt.Fprintf(w, `<h4> %s </h4>`, err)
+		log.Println(err)
 	} else {
-		/* 検索結果表示 */
-		outstr, err := search.grep()
-		if err != nil {
-			log.Println(err)
-		}
-		result := htmlContents(outstr, search.Keyword)
+		result = htmlContents(outstr, search.Keyword)
 		// Search Stats
 		fmt.Fprintf(w, "<h4>")
 		for _, h := range result.Stats {
@@ -280,17 +281,17 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, "<br>")
 		}
 		fmt.Fprintf(w, "</h4>")
-		fmt.Fprintln(w, `<table>`)
+		fmt.Fprintf(w, `<table>`)
 		for _, h := range result.Contents {
 			fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
 		}
-		fmt.Fprintln(w, `</table>`)
-		log.Printf(
-			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
-			strings.Join(result.Stats, " "), search.Keyword, search.Path)
+		fmt.Fprintf(w, `</table>`)
 	}
-	fmt.Fprintln(w, `</body>
-					</html>`)
+	log.Printf(
+		"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		strings.Join(result.Stats, " "), search.Keyword, search.Path)
+	fmt.Fprintf(w, `</body>
+				</html>`)
 }
 
 // ファイル名をリンク化したhtmlを返す
