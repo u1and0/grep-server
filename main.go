@@ -197,21 +197,23 @@ func splitOutByte(b []byte) (a []string) {
 	return
 }
 
-func (s *Search) grep() (outstr []string, err error) {
+func (s *Search) grep(opt ...string) (outstr []string, err error) {
 	if s.Keyword == "" {
 		err = errors.New("検索キーワードがありません")
-	} else if s.Path == "" {
+		return outstr, err
+	} else if s.Path == "" { // Directory check
 		err = errors.New("ディレクトリパスがありません")
-		// Directory check
+		return outstr, err
 	} else if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
 		err = errors.New("ディレクトリパス" + s.CmdPath + "がありません")
-	} else {
-		var out []byte
-		s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
-		if debug {
-			fmt.Printf("[DEBUG] search struct: %+v\n", s)
-		}
+		return outstr, err
+	}
+	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %+v\n", s)
+	}
 
+	/*
 		// コマンド生成
 		opt := []string{ // rga/rg options
 			"--line-number",
@@ -222,23 +224,27 @@ func (s *Search) grep() (outstr []string, err error) {
 			"--no-binary",
 			"--smart-case",
 			// "--ignore-case",
-			"--max-depth", s.Depth,
 			"--stats",
+			"--max-depth", s.Depth,
 			"--encoding", s.Encoding,
 
 			s.CmdKeyword,
 			s.CmdPath,
 		}
-		if debug {
-			fmt.Printf("[DEBUG] options: %v\n", opt)
-		}
+	*/
+	if debug {
+		fmt.Printf("[DEBUG] options: %v\n", opt)
+	}
 
-		// File contents search by `rga` command
-		out, err = exec.Command(EXE, opt...).Output()
-		outstr = splitOutByte(out)
-		if debug {
-			fmt.Printf("[DEBUG] result: %+v\n", outstr)
-		}
+	// File contents search by `rga` command
+	var out []byte
+	out, err = exec.Command(EXE, opt...).Output()
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+	}
+	outstr = splitOutByte(out)
+	if debug {
+		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
 	return outstr, err
 }
@@ -270,7 +276,23 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	// 検索後のフォームに再度同じキーワードを入力
 	fmt.Fprintf(w, search.htmlClause())
 	/* 検索結果表示 */
-	outstr, err := search.grep()
+	rgOption := []string{
+		"--line-number",
+		"--max-columns", "160",
+		"--max-columns-preview",
+		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--smart-case",
+		// "--ignore-case",
+		"--stats",
+
+		"--max-depth", search.Depth,
+		"--encoding", search.Encoding,
+		search.CmdKeyword,
+		search.CmdPath,
+	}
+	outstr, err := search.grep(rgOption...)
 	if err != nil {
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
 		log.Println("[ERROR] ", err)
