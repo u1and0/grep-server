@@ -60,10 +60,12 @@ func main() {
 	flag.Parse()
 	if showVersion {
 		fmt.Println("grep-server", VERSION)
+		rgaVersion, _ := exec.Command(EXE, "--version").Output()
+		fmt.Println(string(rgaVersion))
 		return // versionを表示して終了
 	}
 	// Command check
-	if _, err := exec.LookPath("rga"); err != nil {
+	if _, err := exec.LookPath(EXE); err != nil {
 		log.Fatalf("[ERROR]" + err.Error())
 	}
 	// Log setting
