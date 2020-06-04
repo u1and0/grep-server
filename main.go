@@ -273,7 +273,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	outstr, err := search.grep()
 	if err != nil {
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
-		log.Println(err)
+		log.Println("[ERROR] ", err)
 	} else {
 		result = htmlContents(outstr, search.Keyword)
 		// Search Stats
