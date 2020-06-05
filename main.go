@@ -66,12 +66,12 @@ func main() {
 	}
 	// Command check
 	if _, err := exec.LookPath(EXE); err != nil {
-		log.Fatalf("[ERROR]" + err.Error())
+		log.Fatalf("[ERROR] %s", err.Error())
 	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Fatalf("[ERROR] " + err.Error())
+		log.Fatalf("[ERROR] %s", err.Error())
 	}
 	defer logfile.Close()
 	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
