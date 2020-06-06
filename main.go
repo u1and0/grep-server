@@ -333,26 +333,23 @@ func highlightString(s string, words ...string) string {
 	return s
 }
 
-func htmlContents(a []string, key string) Result {
+func htmlContents(a []string, key string) (r Result) {
 	var (
-		h string // highlight string
-		r = Result{}
+		l = len(a) - STATSLENGTH
 		x = regexp.MustCompile(`^/`)
+		h string // highlight string
 	)
-	for i, s := range a {
-		if i < len(a)-STATSLENGTH {
-			if x.MatchString(s) { // '/'から始まるときはfilename
-				h = highlightFilename(s)
-			} else { // '/'から始まらないときはfile contents
-				h = highlightString(
-					html.EscapeString(s),
-					// メタ文字含まない検索文字のみhighlight
-					strings.Fields(key)...)
-			}
-			r.Contents = append(r.Contents, h)
-		} else {
-			r.Stats = append(r.Stats, s)
+	for _, s := range a[:l] {
+		if x.MatchString(s) { // '/'から始まるときはfilename
+			h = highlightFilename(s)
+		} else { // '/'から始まらないときはfile contents
+			h = highlightString(
+				html.EscapeString(s),
+				// メタ文字含まない検索文字のみhighlight
+				strings.Fields(key)...)
 		}
+		r.Contents = append(r.Contents, h)
 	}
-	return r
+	r.Stats = a[l:]
+	return
 }
