@@ -66,12 +66,12 @@ func main() {
 	}
 	// Command check
 	if _, err := exec.LookPath(EXE); err != nil {
-		log.Fatalf("[ERROR]" + err.Error())
+		log.Fatalf("[ERROR] %s", err.Error())
 	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
-		log.Fatalf("[ERROR] " + err.Error())
+		log.Fatalf("[ERROR] %s", err.Error())
 	}
 	defer logfile.Close()
 	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
@@ -198,47 +198,57 @@ func splitOutByte(b []byte) (a []string) {
 }
 
 func (s *Search) grep() (outstr []string, err error) {
+	if *root != "" {
+		s.CmdPath = strings.TrimPrefix(s.CmdPath, *root)
+	}
+	if *pathSplitWin {
+		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
+		s.CmdPath = strings.ReplaceAll(s.CmdPath, `\`, "/")
+	}
 	if s.Keyword == "" {
-		err = errors.New("検索キーワードがありません")
-	} else if s.Path == "" {
-		err = errors.New("ディレクトリパスがありません")
-		// Directory check
-	} else if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
-		err = errors.New("ディレクトリパス" + s.CmdPath + "がありません")
-	} else {
-		var out []byte
-		s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
-		if debug {
-			fmt.Printf("[DEBUG] search struct: %+v\n", s)
-		}
+		return outstr, errors.New("検索キーワードがありません")
+	}
+	if s.Path == "" { // Directory check
+		return outstr, errors.New("ディレクトリパスがありません")
+	}
+	if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
+		return outstr, errors.New("ディレクトリパス " + s.CmdPath + " がありません")
+	}
+	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
+	if debug {
+		fmt.Printf("[DEBUG] search struct: %+v\n", s)
+	}
 
-		// コマンド生成
-		opt := []string{ // rga/rg options
-			"--line-number",
-			"--max-columns", "160",
-			"--max-columns-preview",
-			"--heading",
-			"--color", "never",
-			"--no-binary",
-			"--smart-case",
-			// "--ignore-case",
-			"--max-depth", s.Depth,
-			"--stats",
-			"--encoding", s.Encoding,
+	// コマンド生成
+	opt := []string{ // rga/rg options
+		"--line-number",
+		"--max-columns", "160",
+		"--max-columns-preview",
+		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--smart-case",
+		// "--ignore-case",
+		"--stats",
+		"--max-depth", s.Depth,
+		"--encoding", s.Encoding,
 
-			s.CmdKeyword,
-			s.CmdPath,
-		}
-		if debug {
-			fmt.Printf("[DEBUG] options: %v\n", opt)
-		}
+		s.CmdKeyword,
+		s.CmdPath,
+	}
+	if debug {
+		fmt.Printf("[DEBUG] options: %v\n", opt)
+	}
 
-		// File contents search by `rga` command
-		out, err = exec.Command(EXE, opt...).Output()
-		outstr = splitOutByte(out)
-		if debug {
-			fmt.Printf("[DEBUG] result: %+v\n", outstr)
-		}
+	// File contents search by `rga` command
+	var out []byte
+	out, err = exec.Command(EXE, opt...).Output()
+	if err != nil {
+		log.Printf("[ERROR] %s", err)
+	}
+	outstr = splitOutByte(out)
+	if debug {
+		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
 	return outstr, err
 }
@@ -258,25 +268,19 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", search)
 	}
-	if *root != "" {
-		search.CmdPath = strings.TrimPrefix(search.CmdPath, *root)
-	}
-	if *pathSplitWin {
-		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CmdPath = strings.ReplaceAll(search.CmdPath, `\`, "/")
-	}
 
 	/* html表示 */
-	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, search.htmlClause())
+	fmt.Fprintf(w, search.htmlClause())     // 検索後のフォームに再度同じキーワードを入力
+	defer fmt.Fprintf(w, `</body> </html>`) // 終了タグ
 	/* 検索結果表示 */
 	outstr, err := search.grep()
 	if err != nil {
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
-		log.Println("[ERROR] ", err)
+		log.Printf(
+			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			err, search.Keyword, search.Path)
 	} else {
 		result = htmlContents(outstr, search.Keyword)
-		// Search Stats
 		fmt.Fprintf(w, "<h4>")
 		for _, h := range result.Stats {
 			fmt.Fprintf(w, h)
@@ -288,12 +292,10 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
 		}
 		fmt.Fprintf(w, `</table>`)
+		log.Printf(
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			strings.Join(result.Stats, " "), search.Keyword, search.Path)
 	}
-	log.Printf(
-		"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		strings.Join(result.Stats, " "), search.Keyword, search.Path)
-	fmt.Fprintf(w, `</body>
-				</html>`)
 }
 
 // ファイル名をリンク化したhtmlを返す
