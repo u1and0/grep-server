@@ -53,6 +53,37 @@ func Test_splitOutByte(t *testing.T) {
 	}
 }
 
+func Test_htmlContents(t *testing.T) {
+	test := []string{
+		"/home/test/path",
+		"this is a test word",
+		"stat0",
+		"stat1",
+		"stat2",
+		"stat3",
+		"stat4",
+		"stat5",
+		"stat6",
+		"stat7",
+	}
+	key := "is word"
+	actual := htmlContents(test, key)
+	expected := Result{
+		Contents: []string{
+			highlightFilename(test[0]),
+			highlightString(test[1], "is", "word"),
+		},
+	}
+	// Filename test
+	if actual.Contents[0] != expected.Contents[0] {
+		t.Fatalf("got: %v want: %v", actual.Contents[0], expected.Contents[0])
+	}
+	// Contents test
+	if actual.Contents[1] != expected.Contents[1] {
+		t.Fatalf("got: %v want: %v", actual.Contents[1], expected.Contents[1])
+	}
+}
+
 /*
 func Test_htmlClause(t *testing.T) {
 	// Case 1

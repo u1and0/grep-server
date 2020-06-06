@@ -283,8 +283,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		result = htmlContents(outstr, search.Keyword)
 		fmt.Fprintf(w, "<h4>")
 		for _, h := range result.Stats {
-			fmt.Fprintf(w, h)
-			fmt.Fprintf(w, "<br>")
+			fmt.Fprintf(w, h, "<br>")
 		}
 		fmt.Fprintf(w, "</h4>")
 		fmt.Fprintf(w, `<table>`)
