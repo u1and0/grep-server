@@ -54,18 +54,7 @@ func Test_splitOutByte(t *testing.T) {
 }
 
 func Test_htmlContents(t *testing.T) {
-	test := []string{
-		"/home/test/path",
-		"this is a test word",
-		"stat0",
-		"stat1",
-		"stat2",
-		"stat3",
-		"stat4",
-		"stat5",
-		"stat6",
-		"stat7",
-	}
+	test := []string{"/home/test/path", "this is a test word", "0", "1", "2", "3", "4", "5", "6", "7"}
 	key := "is word"
 	actual := htmlContents(test, key)
 	expected := Result{
@@ -74,13 +63,16 @@ func Test_htmlContents(t *testing.T) {
 			highlightString(test[1], "is", "word"),
 		},
 	}
-	// Filename test
-	if actual.Contents[0] != expected.Contents[0] {
+	if actual.Contents[0] != expected.Contents[0] { // Filename test
 		t.Fatalf("got: %v want: %v", actual.Contents[0], expected.Contents[0])
 	}
-	// Contents test
-	if actual.Contents[1] != expected.Contents[1] {
+	if actual.Contents[1] != expected.Contents[1] { // Contents test
 		t.Fatalf("got: %v want: %v", actual.Contents[1], expected.Contents[1])
+	}
+	for i, e := range []string{"0", "1", "2", "3", "4", "5", "6", "7"} { // Stats test
+		if actual.Stats[i] != e {
+			t.Fatalf("got: %v want: %v", actual.Stats[i], e)
+		}
 	}
 }
 
