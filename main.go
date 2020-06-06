@@ -197,41 +197,45 @@ func splitOutByte(b []byte) (a []string) {
 	return
 }
 
-func (s *Search) grep(opt ...string) (outstr []string, err error) {
+func (s *Search) grep() (outstr []string, err error) {
+	if *root != "" {
+		s.CmdPath = strings.TrimPrefix(s.CmdPath, *root)
+	}
+	if *pathSplitWin {
+		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
+		s.CmdPath = strings.ReplaceAll(s.CmdPath, `\`, "/")
+	}
 	if s.Keyword == "" {
-		err = errors.New("検索キーワードがありません")
-		return outstr, err
-	} else if s.Path == "" { // Directory check
-		err = errors.New("ディレクトリパスがありません")
-		return outstr, err
-	} else if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
-		err = errors.New("ディレクトリパス" + s.CmdPath + "がありません")
-		return outstr, err
+		return outstr, errors.New("検索キーワードがありません")
+	}
+	if s.Path == "" { // Directory check
+		return outstr, errors.New("ディレクトリパスがありません")
+	}
+	if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
+		return outstr, errors.New("ディレクトリパス " + s.CmdPath + " がありません")
 	}
 	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", s)
 	}
 
-	/*
-		// コマンド生成
-		opt := []string{ // rga/rg options
-			"--line-number",
-			"--max-columns", "160",
-			"--max-columns-preview",
-			"--heading",
-			"--color", "never",
-			"--no-binary",
-			"--smart-case",
-			// "--ignore-case",
-			"--stats",
-			"--max-depth", s.Depth,
-			"--encoding", s.Encoding,
+	// コマンド生成
+	opt := []string{ // rga/rg options
+		"--line-number",
+		"--max-columns", "160",
+		"--max-columns-preview",
+		"--heading",
+		"--color", "never",
+		"--no-binary",
+		"--smart-case",
+		// "--ignore-case",
+		"--stats",
+		"--max-depth", s.Depth,
+		"--encoding", s.Encoding,
 
-			s.CmdKeyword,
-			s.CmdPath,
-		}
-	*/
+		s.CmdKeyword,
+		s.CmdPath,
+	}
 	if debug {
 		fmt.Printf("[DEBUG] options: %v\n", opt)
 	}
@@ -264,41 +268,19 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", search)
 	}
-	if *root != "" {
-		search.CmdPath = strings.TrimPrefix(search.CmdPath, *root)
-	}
-	if *pathSplitWin {
-		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
-		search.CmdPath = strings.ReplaceAll(search.CmdPath, `\`, "/")
-	}
 
 	/* html表示 */
-	// 検索後のフォームに再度同じキーワードを入力
-	fmt.Fprintf(w, search.htmlClause())
+	fmt.Fprintf(w, search.htmlClause())     // 検索後のフォームに再度同じキーワードを入力
+	defer fmt.Fprintf(w, `</body> </html>`) // 終了タグ
 	/* 検索結果表示 */
-	rgOption := []string{
-		"--line-number",
-		"--max-columns", "160",
-		"--max-columns-preview",
-		"--heading",
-		"--color", "never",
-		"--no-binary",
-		"--smart-case",
-		// "--ignore-case",
-		"--stats",
-
-		"--max-depth", search.Depth,
-		"--encoding", search.Encoding,
-		search.CmdKeyword,
-		search.CmdPath,
-	}
-	outstr, err := search.grep(rgOption...)
+	outstr, err := search.grep()
 	if err != nil {
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
-		log.Println("[ERROR] ", err)
+		log.Printf(
+			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			err, search.Keyword, search.Path)
 	} else {
 		result = htmlContents(outstr, search.Keyword)
-		// Search Stats
 		fmt.Fprintf(w, "<h4>")
 		for _, h := range result.Stats {
 			fmt.Fprintf(w, h)
@@ -310,12 +292,10 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			fmt.Fprintf(w, `<tr> <td>`+h+`</td> </tr>`)
 		}
 		fmt.Fprintf(w, `</table>`)
+		log.Printf(
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			strings.Join(result.Stats, " "), search.Keyword, search.Path)
 	}
-	log.Printf(
-		"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
-		strings.Join(result.Stats, " "), search.Keyword, search.Path)
-	fmt.Fprintf(w, `</body>
-				</html>`)
 }
 
 // ファイル名をリンク化したhtmlを返す
