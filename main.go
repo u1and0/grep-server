@@ -21,6 +21,10 @@ const (
 	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
+	// TIMEOUT : Search method
+	TIMEOUT = 10 * time.Second
+	// PORT : http.ListenAndServe port number
+	PORT = ":8080"
 )
 
 var (
@@ -64,7 +68,7 @@ func main() {
 	// HTTP response
 	http.HandleFunc("/", showInit)        // top page
 	http.HandleFunc("/search", addResult) // search result
-	http.ListenAndServe(":8080", nil)
+	http.ListenAndServe(PORT, nil)
 }
 
 // showInit : Top page html
@@ -93,7 +97,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		Root:         root,
 		PathSplitWin: pathSplitWin,
 		Debug:        debug,
-		Timeout:      10e9 * time.Nanosecond, // 10sec
+		Timeout:      TIMEOUT,
 	}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", search)
