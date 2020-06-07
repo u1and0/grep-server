@@ -28,7 +28,7 @@ type Search struct {
 }
 
 // Grep : rga検索の結果をstring sliceにして返す
-func (s *Search) Grep() (outstr []string, err error) {
+func (s *Search) Grep() ([]string, error) {
 	if s.Root != "" {
 		s.CmdPath = strings.TrimPrefix(s.CmdPath, s.Root)
 	}
@@ -37,13 +37,13 @@ func (s *Search) Grep() (outstr []string, err error) {
 		s.CmdPath = strings.ReplaceAll(s.CmdPath, `\`, "/")
 	}
 	if s.Keyword == "" {
-		return outstr, errors.New("検索キーワードがありません")
+		return []string{}, errors.New("検索キーワードがありません")
 	}
 	if s.Path == "" { // Directory check
-		return outstr, errors.New("ディレクトリパスがありません")
+		return []string{}, errors.New("ディレクトリパスがありません")
 	}
-	if _, err = os.Stat(s.CmdPath); os.IsNotExist(err) {
-		return outstr, errors.New("ディレクトリパス " + s.CmdPath + " がありません")
+	if _, err := os.Stat(s.CmdPath); os.IsNotExist(err) {
+		return []string{}, errors.New("ディレクトリパス " + s.CmdPath + " がありません")
 	}
 	s.CmdKeyword = andorPadding(s.Keyword, s.AndOr)
 	if s.Debug {
@@ -77,21 +77,21 @@ func (s *Search) Grep() (outstr []string, err error) {
 
 	// File contents search by `rga` command
 	var out []byte
-	out, err = exec.CommandContext(ctx, s.Exe, opt...).Output()
+	out, err := exec.CommandContext(ctx, s.Exe, opt...).Output()
 	// We want to check the context error to see if the timeout was executed.
 	// The error returned by cmd.Output() will be OS specific based on what
 	// happens when a process is killed.
 	if ctx.Err() == context.DeadlineExceeded {
-		return outstr, errors.New("タイムアウトしました。検索条件を変えてください。")
+		return []string{}, errors.New("タイムアウトしました。検索条件を変えてください。")
 	}
 	if err != nil {
 		log.Printf("[ERROR] %s", err)
 	}
-	outstr = splitOutByte(out)
+	outstr := splitOutByte(out)
 	if s.Debug {
 		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
-	return
+	return outstr, err
 }
 
 // HTMLClause : ページに表示する情報
