@@ -9,13 +9,14 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 
 	cmd "grep-server/cmd"
 )
 
 const (
 	// VERSION : version
-	VERSION = "0.0.0"
+	VERSION = "1.0.0"
 	// EXE : Search command
 	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
@@ -40,8 +41,11 @@ func main() {
 	flag.BoolVar(&showVersion, "version", false, "show version")
 	flag.BoolVar(&debug, "debug", false, "run as debug mode")
 	flag.StringVar(&root, "r", "", "Append root directory path")
+	flag.StringVar(&root, "root", "", "Append root directory path")
 	flag.StringVar(&encoding, "E", "UTF-8", "Set default encoding")
+	flag.StringVar(&encoding, "encoding", "UTF-8", "Set default encoding")
 	flag.BoolVar(&pathSplitWin, "s", false, "OS path split windows backslash")
+	flag.BoolVar(&pathSplitWin, "sep", false, "OS path split windows backslash")
 	flag.Parse()
 	// Show version
 	if showVersion {
@@ -89,6 +93,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		Root:         root,
 		PathSplitWin: pathSplitWin,
 		Debug:        debug,
+		Timeout:      10e9 * time.Nanosecond, // 10sec
 	}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", search)
