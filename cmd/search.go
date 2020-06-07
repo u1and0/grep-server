@@ -1,27 +1,30 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"strings"
+	"time"
 )
 
 // Search : Search query structure
 type Search struct {
-	Keyword      string // 検索語
-	Path         string // 検索対象パス
-	AndOr        string // and / or の検索メソッド
-	Depth        string // 検索対象パスから検索する階層数
-	Encoding     string // ファイルエンコード
-	CmdKeyword   string // rgaコマンドに渡す and / or padding した検索キーワード
-	CmdPath      string // rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
-	Exe          string // => /usr/bin/rga
-	Root         string // trimするパスのプレフィックス
-	PathSplitWin bool   // Windows path sepに変更する
-	Debug        bool   // Debug modeに変更する
+	Keyword      string        // 検索語
+	Path         string        // 検索対象パス
+	AndOr        string        // and / or の検索メソッド
+	Depth        string        // 検索対象パスから検索する階層数
+	Encoding     string        // ファイルエンコード
+	CmdKeyword   string        // rgaコマンドに渡す and / or padding した検索キーワード
+	CmdPath      string        // rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
+	Exe          string        // => /usr/bin/rga
+	Root         string        // trimするパスのプレフィックス
+	PathSplitWin bool          // Windows path sepに変更する
+	Debug        bool          // Debug modeに変更する
+	Timeout      time.Duration // rga検索コマンドのタイムアウト
 }
 
 // Grep : rga検索の結果をstring sliceにして返す
@@ -68,9 +71,19 @@ func (s *Search) Grep() (outstr []string, err error) {
 		fmt.Printf("[DEBUG] options: %v\n", opt)
 	}
 
+	// Create a new context and add a timeout to it
+	ctx, cancel := context.WithTimeout(context.Background(), s.Timeout)
+	defer cancel() // The cancel should be deferred so resources are cleaned up
+
 	// File contents search by `rga` command
 	var out []byte
-	out, err = exec.Command(s.Exe, opt...).Output()
+	out, err = exec.CommandContext(ctx, s.Exe, opt...).Output()
+	// We want to check the context error to see if the timeout was executed.
+	// The error returned by cmd.Output() will be OS specific based on what
+	// happens when a process is killed.
+	if ctx.Err() == context.DeadlineExceeded {
+		return outstr, errors.New("タイムアウトしました。検索条件を変えてください。")
+	}
 	if err != nil {
 		log.Printf("[ERROR] %s", err)
 	}
@@ -78,7 +91,7 @@ func (s *Search) Grep() (outstr []string, err error) {
 	if s.Debug {
 		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
-	return outstr, err
+	return
 }
 
 // HTMLClause : ページに表示する情報
