@@ -3,7 +3,7 @@
 
 ***DEMO:***
 
-![Demo](https://image-url.gif)
+![Demo](https://github.com/u1and0/grep-server/blob/u1and0-patch-2/Peek%202020-06-07%2023-23.gif)
 
 ## Description
 ウェブブラウザからの入力で指定ディレクトリ下にあるファイル内の文字列に対して正規表現検索を行い、結果をhtmlにしてウェブブラウザに表示します。
@@ -13,7 +13,11 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 
 ## Requirement
 * [ripgrep-all](https://github.com/phiresky/ripgrep-all)
-
+* ripgrep
+* pandoc
+* poppler-utils
+* ffmpeg
+* cargo
 
 ## Usage
 
@@ -25,7 +29,7 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 2. 検索キーワードをスペース区切りで入力します。検索キーワードには正規表現を使うことができます。
 3. 検索階層数(Lv)を1〜5の間から選択します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。
 4. and検索を行うかor検索を行うかをラジオボタンで選択します。
-5. [ 検索 ]ボタンをクリックすると検索が始まります。
+5. [ Search ]ボタンをクリックすると検索が始まります。
 6. Help: 開発元githubリンク
 
 ![png1](https://github.com/u1and0/grep-server/blob/u1and0-patch-1/Screenshot%20from%202020-05-27%2010-12-46.png)
@@ -39,14 +43,20 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 ### コマンドオプション
 
 ```grep-server -h
-Usage of /usr/bin/grep-server:
+Usage of /tmp/go-build837548243/b001/exe/main:
   -E string
         Set default encoding (default "UTF-8")
   -debug
         run as debug mode
+  -encoding string
+        Set default encoding (default "UTF-8")
   -r string
         Append root directory path
+  -root string
+        Append root directory path
   -s    OS path split windows backslash
+  -sep
+        OS path split windows backslash
   -v    show version
   -version
         show version
@@ -89,20 +99,25 @@ table1: 正規表現の例
 
 table2: 検索ログの例
 
-|   検索ログの内容      |    検索ログの例                     |
-|-----------------------|-------------------------------------|
-| 検索日時              |    2020/05/27 08:08:41              |
-| マッチしたファイル数  |    xxfiles                          |
-| マッチした行数        |    xxxmatched lines                 |
-| 検索時間              |    xxxmsec                          |
-| 検索キーワード        |    Keyword: [    xxxx    ]          |
-| 検索パス              |    Path: [    xxx/xxx/xxx   ]       |
+|   検索ログの内容      |    検索ログの例                                   |
+|-----------------------|---------------------------------------------------|
+| 検索日時              |    2020/06/02 21:07:15                            |
+| マッチ数              |    23 matches                                     |
+| マッチした行数        |    23 matched lines                               |
+| マッチしたファイル数  |    1 files contained matches                      |
+| 検索したファイル数    |    415 files searched                             |
+| 表示したバイト数      |    997 bytes printed                              |
+| 検索したバイト数      |    14123624 bytes searched                        |
+| 検索にかかった時間    |    0.021035 seconds spent searching               |
+| 全体にかかった時間    |    0.033567 seconds                               |
+| 検索キーワード        |    Keyword: [ 机 カタログ                  ]      |
+| 検索パス              |    Path: [    /home/u1and0/Dropbox/Document   ]   |
 
 
 ## Installation
 
 ```
-$ git clone https://github.com/u1and0/grep-server
+$ go get github.com/u1and0/grep-server
 ```
 
 or use docker
@@ -111,14 +126,6 @@ or use docker
 $ docker pull u1and0/grep-server
 ```
 
-
-## Dependencies
-
-* ripgrep
-* pandoc
-* poppler-utils
-* ffmpeg
-* cargo
 
 ## Test
 
