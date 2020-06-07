@@ -1,0 +1,218 @@
+LS(1)                                                 ユーザーコマンド                                                LS(1)
+
+名前
+       ls - ディレクトリの内容をリスト表示する
+
+書式
+       ls [オプション]... [ファイル]...
+
+説明
+       FILE  (デフォルトは現在のディレクトリ) に関する情報を一覧表示します。 -cftuvSUX のいずれも指定されず、 --sort も指定
+       されていない場合、 要素はアルファベット順でソートされます。
+
+       長いオプションで必須となっている引数は短いオプションでも必須です。
+
+       -a, --all
+              . で始まる要素を無視しない
+
+       -A, --almost-all
+              . および .. を一覧表示しない
+
+       --author               -l と合わせて使用した時、各ファイルの作成者を表示する
+
+       -b, --escape
+              表示不可能な文字の場合に C 形式のエスケープ文字を表示する
+
+       --block-size=SIZE
+              SIZE の倍数として表示する。例: '--block-size=M' は 表示する時に 1,048,576  バイトを単位としてサイズを  表示す
+              る。SIZE の形式は以下を参照
+
+       -B, --ignore-backups
+              ~ で終了する要素を一覧に表示しない
+
+       -c                         -lt と組み合わせた場合、 ctime (ファイル状態情報を変更した時間)
+              でソートし、  ctime  を表示する。 -l と組み合わせた場合、名前で並べ替えて ctime を表示する。 それ以外の場合は
+              ctime で新しい順に並べ替える
+
+       -C     多段組で一覧を表示する
+
+       --color[=WHEN]
+              カラー出力をする。 WHEN には 'always' (デフォルト値)、 'never'、 'auto' が指定できる。詳細は下記を参照
+
+       -d, --directory
+              ディレクトリの内容ではなくディレクトリ自身を一覧表示する。 また、シンボリックリンクも辿らない
+
+       -D, --dired
+              Emacs の dired モード用の出力を生成する
+
+       -f     ソートしない。 -aU が有効になり、 -ls --color が無効になる
+
+       -F, --classify
+              タイプ識別子 (*/=>@| のうちの一つ) を付けて出力する
+
+       --file-type
+              上と同様だが '*' を付与しない
+
+       --format=WORD
+              WORD が across は -x, commas は -m, horizontal は -x, long  は  -l,  single-column  は  -1,  verbose  は  -l,
+              vertical は -C と同じ
+
+       --full-time            -l --time-style=full-iso と同様
+
+       -g                         -l と同様だがファイル所有者を表示しない
+
+       --group-directories-first
+              ファイルの前にディレクトリをグループ化して表示する。
+
+              --sort オプションと組み合わせて使用できる。 --sort=none (-U) と併せたときはグループ化を行わない
+
+       -G, --no-group
+              詳細リスト形式の時にグループ名を表示しない
+
+       -h, --human-readable       -l や -s と併せて使用したときに、人間が読みやすい形式で
+              サイズを表示する (例: 1K 234M 2G)
+
+       --si   上と同様だが乗数の単位に 1024 の代わりに 1000 を使用する
+
+       -H, --dereference-command-line
+              コマンド行でリストされたシンボリックリンクを辿る
+
+       --dereference-command-line-symlink-to-dir
+              コマンド行のシンボリックリンクがディレクトリを指している 時にはシンボリックリンクを辿る
+
+       --hide=PATTERN
+              シェル形式の PATTERN に一致する要素は表示しない (-a または -A で上書きされる)
+
+       --indicator-style=WORD
+              要素の名前に  WORD で指定した形式の識別子を加える: none (デフォルト)、 slash (-p)、 file-type (--file-type)、
+              classify (-F)
+
+       -i, --inode
+              各ファイルの i ノード番号を表示する
+
+       -I, --ignore=PATTERN
+              シェル形式の PATTERN に一致する要素は表示しない
+
+       -k     ディスク使用量のブロックサイズとして 1024 バイトを使う
+
+       -l     詳細リスト形式を表示する
+
+       -L, --dereference
+              シンボリックリンクのファイル情報を表示するときは リンクそのものではなくリンク参照先のファイル 情報を表示する
+
+       -m     要素のリストをカンマで区切り、一行に詰め込む
+
+       -n, --numeric-uid-gid      -l と同様だが UID と GID を数値で表示する
+
+       -N, --literal
+              生の要素名を表示する (制御文字などを特別扱いしない)
+
+       -o                         -l と同様だがグループ情報を表示しない
+
+       -p, --indicator-style=slash
+              ディレクトリに対して識別子 / を加えて表示する
+
+       -q, --hide-control-chars
+              表示不可能な文字を ? に置き換える
+
+       --show-control-chars
+              表示不可能な文字をそのまま表示 (プログラムが 'ls' で なかったり、出力が端末以外の場合は、これがデフォルト動作
+              になる)
+
+       -Q, --quote-name
+              ファイル名をダブルクォート (") で囲む
+
+       --quoting-style=WORD
+              項目名のクォートを WORD で指定された形式で行う: literal, locale, shell, shell-always, c, escape
+
+       -r, --reverse
+              ソート順を反転させる
+
+       -R, --recursive
+              子ディレクトリを再帰的に一覧表示する
+
+       -s, --size
+              ブロック単位で各ファイルサイズを表示する
+
+       -S     ファイルサイズ順にソートする。大きいものから表示される
+
+       --sort=WORD
+              名前順の代わりに次の  WORD で指定した順でソートする: none (-U), size (-S), time (-t), version (-v), extension
+              (-X)
+
+       --time=WORD            -l と併せて使用し、デフォルトのファイル更新時刻の代わりに
+              WORD で指定した時間を表示する: atime/access/use (-u), ctime/status (-c)。 --sort=time  を指定した場合はソート
+              のキーとして 指定した時間が使用される
+
+       --time-style=STYLE     -l と併せて使用し、次の STYLE 形式で時間を表示する:
+              full-iso,   long-iso,   iso,   locale,   +FORMAT。   FORMAT   は   'date'   と同様に解釈される。   FORMAT  が
+              FORMAT1<newline>FORMAT2 となっている場合、 FORMAT1 は最近でない時間のファイルに適用され、 FORMAT2  は最近の時
+              間のファイル側に適用される。  STYLE  の接頭辞として  'posix-' をつけた場合、 POSIX ロケールではない場合にのみ
+              STYLE が効果を持つ
+
+       -t     ファイル更新時間で新しい順にソートする
+
+       -T, --tabsize=COLS
+              タブ幅を 8 の代わりに COLS にする
+
+       -u                         -lt と使用とした場合、アクセス時間でソート、アクセス時間を表示する。
+              -l と使用した場合、名前でソートし、アクセス時間を表示する。 それ以外の場合、アクセス時間でソートする
+
+       -U     ソートをしない。ディレクトリに含まれている要素順で表示する
+
+       -v     自然な (バージョン) 数字順でソートする
+
+       -w, --width=COLS
+              出力幅を COLS にする。 0 は制限なしを意味する
+
+       -x     要素を列優先ではなく行優先で配置する
+
+       -X     拡張子のアルファベット順にソートする
+
+       -Z, --context
+              各ファイルの SELinux セキュリティコンテキストを表示する
+
+       -1     1 ファイル 1 行で表示する
+
+       --help この使い方を表示して終了する
+
+       --version
+              バージョン情報を表示して終了する
+
+       SIZE 引数は整数で、追加で単位を指定できます (例えば、10M は 10*1024*1024 です)。 単位には K, M, G, T,  P,  E,  Z,  Y
+       (1024 の累乗) や KB, MB, ... (1000 の累乗) が使用できます。
+
+       デフォルトまたは     --color=never    を指定した場合、ファイルの種類を判別するための    カラー表示は無効となります。
+       --color=auto を指定した場合、標準出力が端末に接続  されている場合のみカラーコードを出力します。LS_COLORS  環境変数に
+       よって動作 を設定できます。LS_COLORS を設定する場合は dircolors を使用してください。
+
+   終了ステータス:
+       0      正常終了、
+
+       1      軽微な問題が発生 (例: 子ディレクトリにアクセスできない)、
+
+       2      重大な問題が発生 (例: コマンド引数が誤っている)。
+
+       GNU     coreutils     のオンラインヘルプ:     <http://www.gnu.org/software/coreutils/>    ls    の翻訳に関するバグは
+       <http://translationproject.org/team/ja.html>                    に連絡してください。                    完全な文書は
+       <http://www.gnu.org/software/coreutils/ls>  にあります。  ローカルでは info '(coreutils) ls invocation' で参照できま
+       す。
+
+作者
+       作者 Richard M. Stallman および David MacKenzie。
+
+著作権
+       Copyright  ©  2016  Free  Software  Foundation,  Inc.    ライセンス   GPLv3+:   GNU   GPL   version   3   or   later
+       <http://gnu.org/licenses/gpl.html>.
+       This is free software: you are free to change and redistribute it.  There is NO WARRANTY, to the extent permitted by
+       law.
+
+関連項目
+       ls の完全なマニュアルは Texinfo マニュアルとして整備されている。もし、 info および ls のプログラムが正しくインストー
+       ルされているならば、コマンド
+
+              info ls
+
+       を使用すると完全なマニュアルを読むことができるはずだ。
+
+GNU coreutils                                            2016年2月                                                    LS(1)

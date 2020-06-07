@@ -1,2 +1,5 @@
 go.*
 grep-server
+log
+old
+tags
