@@ -52,10 +52,10 @@ func TestSearch_Grep(t *testing.T) {
 		Exe:      "/usr/bin/rga",
 		Timeout:  10 * time.Second,
 	}
-	expected := 227 + // Matched lines
+	expected := 449 + // Matched lines
 		8 + // Stats lines
-		2 + // Filenames
-		2 // CRLF
+		3 + // Filenames
+		3 // CRLF
 	actual, _ := s.Grep()
 	if expected != len(actual) {
 		t.Fatalf("got: %v want: %v", len(actual), expected)
