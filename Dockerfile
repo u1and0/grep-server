@@ -32,4 +32,4 @@ ENTRYPOINT ["/usr/bin/grep-server"]
 
 LABEL maintainer="u1and0 <e01.ando60@gmail.com>"\
       description="Running grep-server"\
-      version="v1.0.0"
+      version="v1.0.3"
