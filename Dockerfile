@@ -16,12 +16,10 @@ RUN sudo -u u1and0 yay -Syu --noconfirm --afterclean --removemake --save \
     # : "Remove caches forcely" &&\
     # : "[error] yes | pacman -Scc" &&\
     # rm -rf /home/u1and0/.cache &&\
-COPY main.go /go/src/github.com/u1and0/grep-server/
-COPY cmd/search.go /go/src/github.com/u1and0/grep-server/cmd/
-COPY cmd/result.go /go/src/github.com/u1and0/grep-server/cmd/
-COPY go.mod /go/src/github.com/u1and0/grep-server/
 WORKDIR /go/src/github.com/u1and0/grep-server
-ENV GO111MODULE on
+COPY main.go .
+COPY go.mod .
+COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
     # pacman --noconfirm -Rcns go &&\
     # pacman -Scc --noconfirm

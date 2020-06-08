@@ -1,3 +1,3 @@
-module github.com/u1and0/grep-server
+module grep-server
 
 go 1.14
