@@ -16,7 +16,7 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "1.0.0"
+	VERSION = "1.0.2"
 	// EXE : Search command
 	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
