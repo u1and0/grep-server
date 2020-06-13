@@ -13,11 +13,11 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 
 ## Requirement
 * [ripgrep-all](https://github.com/phiresky/ripgrep-all)
-* ripgrep
-* pandoc
-* poppler-utils
-* ffmpeg
-* cargo
+* [ripgrep](https://github.com/BurntSushi/ripgrep)
+* [pandoc](https://pandoc.org/)
+* [poppler-utils](https://poppler.freedesktop.org/)
+* [ffmpeg](https://ffmpeg.org/)
+
 
 ## Usage
 
@@ -43,7 +43,7 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 ### コマンドオプション
 
 ```grep-server -h
-Usage of /tmp/go-build837548243/b001/exe/main:
+Usage of grep-server:
   -E string
         Set default encoding (default "UTF-8")
   -debug
@@ -57,6 +57,10 @@ Usage of /tmp/go-build837548243/b001/exe/main:
   -s    OS path split windows backslash
   -sep
         OS path split windows backslash
+  -t duration
+        Search method timeout (default 10s)
+  -timeout duration
+        Search method timeout (default 10s)
   -v    show version
   -version
         show version
@@ -72,19 +76,19 @@ table1: 正規表現の例
 |<div align='left'>   .(doc\|xls)   |<div align='left'>   「.doc」または「.xls」が含まれる, 大文字小文字は無視 |
 |<div align='left'>   jpe?g|<div align='left'>「jpeg」または「jpg」が含まれる, 大文字小文字は無視  |
 |<div align='left'>   SW5␣34[bd] |<div align='left'> 「SW5」と「34b」、または「SW5」と「34d」が含まれる  |
-|<div align='left'>   SW5␣34[b-d]  |<div align='left'> 「SW5」と「34b」、または「SW5」と「34c」、または「SW5」と「34d」が含まれる  |
-|<div align='left'>   2[6-9]SS  |<div align='left'> 「26SS」「27SS」, 「28SS」, 「29SS」のどれかが含まれる  |
+|<div align='left'>   SW5␣34[b-d]  |<div align='left'> 「SW5」と「34b」、または「SW5」と「34c」、または「SW5」と「34d」が含まれる, 大文字小文字は区別する  |
+|<div align='left'>   2[6-9]SS  |<div align='left'> 「26SS」「27SS」, 「28SS」, 「29SS」のどれかが含まれる, 大文字小文字は区別する  |
 
 
 
 ### 検索オプション
 * フォルダパスをフルパスで入力します。
-  * ローカルドライブ外のルートパスはデプロイ時に`-r`(root)オプションで指定することができます。
+  * ローカルドライブ外のルートパスはデプロイ時に`-r`(root)オプションでドライブのプレフィックスを指定することができます。
 * case sensitiveはsmart caseが有効です。
   * 小文字だけのキーワードに対しては大文字小文字を無視して検索します。
   * 大文字を含んだキーワードに対しては大文字小文字を区別して検索します。
 * 検索階層数(Lv)を1〜5の間から選択します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。
-  * 例えばLv: 2を選択したとき、現在ディレクトリから最大2階層下のファイルまでを検索対象ファイルとします。
+  * 例えばLv: 2を選択したとき、指定ディレクトリから最大2階層下のファイルまでを検索対象ファイルとします。
 * and検索を行うかor検索を行うかをラジオボタンで選択します。
   * and検索ではスペースで区切ったキーワードが全て入った行のみを結果として返します。
   * or検索ではスペースで区切ったキーワードのどれかが入った行を結果として返します。
@@ -137,13 +141,20 @@ $ go test
 ## Deploy
 
 ```
-$ grep-server -r '\\gr.net\path\to\root' -s
+$ grep-server -r '\\gr.net\path\to\root' -s -E SHIFT-JIS -t 5s
 ```
+
+* `-r` で `\\gr.net\path\to\root'` をドライブのプレフィックスとし、
+* `-s` でパスセパレータをスラッシュ"/"からバックスラッシュ"\\"に変え
+* `-E` で最初に表示されるページのエンコーディングをSHIFT-JISにし、
+* `-t` で検索タイムアウトを5秒に設定します。
+
 
 or use docker container
 
 ```
-$ docker run -d -v /home/myname:/home/myname u1and0/grep-server
+$ docker run -d -p 8082:8080 -v /home/myname:/home/myname u1and0/grep-server\
+  -r '\\gr.net\path\to\root' -s -E SHIFT-JIS -t 5s
 ```
 
 ENTRYPOINTに`grep-server`を指定しているので、イメージ名の後はオプションを書き足して下さい。
