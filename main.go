@@ -16,13 +16,11 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "1.0.2"
+	VERSION = "1.0.3"
 	// EXE : Search command
 	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
-	// TIMEOUT : Search method
-	TIMEOUT = 10 * time.Second
 	// PORT : http.ListenAndServe port number
 	PORT = ":8080"
 )
@@ -33,6 +31,7 @@ var (
 	root         string
 	encoding     string
 	pathSplitWin bool
+	timeout      time.Duration
 )
 
 func main() {
@@ -50,6 +49,8 @@ func main() {
 	flag.StringVar(&encoding, "encoding", "UTF-8", "Set default encoding")
 	flag.BoolVar(&pathSplitWin, "s", false, "OS path split windows backslash")
 	flag.BoolVar(&pathSplitWin, "sep", false, "OS path split windows backslash")
+	flag.DurationVar(&timeout, "t", 10*time.Second, "Search method timeout")
+	flag.DurationVar(&timeout, "timeout", 10*time.Second, "Search method timeout")
 	flag.Parse()
 	// Show version
 	if showVersion {
@@ -97,7 +98,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		Root:         root,
 		PathSplitWin: pathSplitWin,
 		Debug:        debug,
-		Timeout:      TIMEOUT,
+		Timeout:      timeout,
 	}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", search)
