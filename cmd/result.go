@@ -16,12 +16,17 @@ const (
 type Result struct {
 	Out, Stats, Contents []string
 	Root                 string
+	Trim                 string
 	PathSplitWin         bool
 }
 
 // ファイル名をリンク化したhtmlを返す
 func (r *Result) highlightFilename(s string) string {
 	dirpath := filepath.Dir(s)
+	if r.Trim != "" { // Trim drive path
+		s = strings.TrimPrefix(s, r.Trim)
+		dirpath = strings.TrimPrefix(dirpath, r.Trim)
+	}
 	if r.Root != "" && s != "" { // Add drive path
 		s = r.Root + s
 		dirpath = r.Root + dirpath

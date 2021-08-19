@@ -29,6 +29,7 @@ var (
 	showVersion  bool
 	debug        bool
 	root         string
+	trim         string
 	encoding     string
 	pathSplitWin bool
 	timeout      time.Duration
@@ -45,6 +46,8 @@ func main() {
 	flag.BoolVar(&debug, "debug", false, "run as debug mode")
 	flag.StringVar(&root, "r", "", "Append root directory path")
 	flag.StringVar(&root, "root", "", "Append root directory path")
+	flag.StringVar(&trim, "T", "", "DB trim prefix for directory path")
+	flag.StringVar(&trim, "trim", "", "DB trim prefix for directory path")
 	flag.StringVar(&encoding, "E", "UTF-8", "Set default encoding")
 	flag.StringVar(&encoding, "encoding", "UTF-8", "Set default encoding")
 	flag.BoolVar(&pathSplitWin, "s", false, "OS path split windows backslash")
@@ -74,9 +77,10 @@ func main() {
 
 // showInit : Top page html
 func showInit(w http.ResponseWriter, r *http.Request) {
+	// オプションのデフォルト設定
 	// 検索語、ディレクトリは空
 	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	s := cmd.Search{Depth: "1", AndOr: "and", Encoding: encoding}
+	s := cmd.Search{Depth: "1", AndOr: "and", Encoding: encoding, Mode: "Content"}
 	if debug {
 		fmt.Printf("[DEBUG] search struct: %+v\n", s)
 	}
@@ -92,10 +96,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		AndOr:        r.FormValue("andor-search"),
 		Depth:        r.FormValue("depth"),
 		Encoding:     r.FormValue("encoding"),
+		Mode:         r.FormValue("mode"),
 		CmdKeyword:   "",
 		CmdPath:      r.FormValue("directory-path"), // 初期値はPathと同じ
 		Exe:          EXE,
 		Root:         root,
+		Trim:         trim, // Path prefix trim
 		PathSplitWin: pathSplitWin,
 		Debug:        debug,
 		Timeout:      timeout,
@@ -107,15 +113,28 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	/* html表示 */
 	fmt.Fprintf(w, search.HTMLClause())     // 検索後のフォームに再度同じキーワードを入力
 	defer fmt.Fprintf(w, `</body> </html>`) // 終了タグ
+
+	/* コマンド作成 */
+	c, err := search.CommandGen()
+	if search.Debug {
+		fmt.Printf("[DEBUG] options: %v\n", c)
+	}
+	if err != nil { // Error
+		fmt.Fprintf(w, `<h4> %s </h4>`, err)
+		log.Printf(
+			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			err, search.Keyword, search.Path)
+	}
+
 	/* 検索結果表示 */
-	outstr, err := search.Grep()
+	outstr, err := search.Grep(c)
 	if err != nil { // Error
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
 		log.Printf(
 			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
 			err, search.Keyword, search.Path)
 	} else { // Success
-		result := cmd.Result{Out: outstr, Root: root, PathSplitWin: pathSplitWin}
+		result := cmd.Result{Out: outstr, Root: root, Trim: trim, PathSplitWin: pathSplitWin}
 		result = result.HTMLContents(search.Keyword)
 		if debug {
 			fmt.Printf("[DEBUG] result struct: %+v\n", result)
