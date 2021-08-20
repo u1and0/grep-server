@@ -24,7 +24,7 @@ type Result struct {
 type Content struct{ Dir, File, Highlight string }
 
 // ファイル名をリンク化したhtmlを返す
-func (r *Result) highlightFilename(s string, words ...string) (string, string) {
+func (r *Result) highlightFilename(s string, words []string) (string, string) {
 	dirpath := filepath.Dir(s)
 	if r.Trim != "" { // Trim drive path
 		s = strings.TrimPrefix(s, r.Trim)
@@ -39,14 +39,14 @@ func (r *Result) highlightFilename(s string, words ...string) (string, string) {
 	}
 	if s != "" {
 		s = strings.Replace(s, s,
-			"<a target=\"_blank\" href=\"file://"+s+"\">"+highlightString(s, words...)+"</a>", 1)
+			"<a target=\"_blank\" href=\"file://"+s+"\">"+highlightString(s, words)+"</a>", 1)
 		dirpath = " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s, dirpath
 }
 
 // highlightString : sの文字列中にあるwordsの背景を黄色にハイライトしたhtmlを返す
-func highlightString(s string, words ...string) string {
+func highlightString(s string, words []string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`) // ((?i)word)
 		found := re.FindString(s)
@@ -60,18 +60,17 @@ func highlightString(s string, words ...string) string {
 
 // HTMLContents : ファイル名ハイライトとファイルコンテンツハイライトを
 // Result構造体に入れて返す
-func (r *Result) HTMLContents(key string) Result {
+func (r *Result) HTMLContents(words []string) Result {
 	var (
-		l     = len(r.Out) - STATSLENGTH
-		x     = regexp.MustCompile(`^/`)
-		words = strings.Fields(key)
+		l = len(r.Out) - STATSLENGTH
+		x = regexp.MustCompile(`^/`)
 	)
 	for _, s := range r.Out[:l] {
 		var c Content
 		if x.MatchString(s) { // '/'から始まるときはfilename
-			c.File, c.Dir = r.highlightFilename(s, words...)
+			c.File, c.Dir = r.highlightFilename(s, words)
 		} else { // '/'から始まらないときはfile contents
-			c.Highlight = highlightString(s, words...)
+			c.Highlight = highlightString(s, words)
 		}
 		r.Contents = append(r.Contents, c)
 	}

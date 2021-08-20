@@ -85,7 +85,7 @@ func (s *Search) CommandGen() ([]string, error) {
 			"--smart-case",
 			// "--ignore-case",
 			"--stats",
-			s.CmdKeyword,
+			fmt.Sprintf("\"%s\"", s.CmdKeyword),
 		}
 	} else {
 		return []string{}, errors.New("検索モードが設定されていません。 Content or File")
@@ -113,7 +113,7 @@ func (s *Search) Grep(opt []string) ([]string, error) {
 			return []string{}, errors.New("タイムアウトしました。検索条件を変えてください。")
 		}
 	} else if s.Mode == "File" {
-		command := exec.Command("sh", "-c", s.Exe+" "+strings.Join(opt, " "))
+		command := exec.Command("sh", "-c", "/usr/bin/rg "+strings.Join(opt, " "))
 		out, err = command.CombinedOutput()
 	}
 	if err != nil {

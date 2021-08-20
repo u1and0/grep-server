@@ -136,7 +136,8 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			err, search.Keyword, search.Path)
 	} else { // Success
 		result := cmd.Result{Out: outstr, Root: root, Trim: trim, PathSplitWin: pathSplitWin}
-		result = result.HTMLContents(search.Keyword)
+		ss := strings.Fields(search.Keyword)
+		result = result.HTMLContents(ss)
 		if debug {
 			fmt.Printf("[DEBUG] result struct: %+v\n", result)
 		}
