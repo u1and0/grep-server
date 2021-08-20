@@ -22,6 +22,7 @@ type Search struct {
 	CmdKeyword   string        // rgaコマンドに渡す and / or padding した検索キーワード
 	CmdPath      string        // rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 	Exe          string        // => /usr/bin/rga
+	Exf          string        // => /usr/bin/rg
 	Root         string        // 追加するパスのプレフィックス
 	Trim         string        // 取り除くパスのプレフィックス
 	PathSplitWin bool          // Windows path sepに変更する
@@ -80,12 +81,14 @@ func (s *Search) CommandGen() ([]string, error) {
 			"--max-depth", s.Depth,
 			s.CmdPath,
 			"|",
-			"/usr/bin/rg",
+			s.Exf,
 			"--color", "never",
 			"--smart-case",
 			// "--ignore-case",
 			"--stats",
 			fmt.Sprintf("\"%s\"", s.CmdKeyword),
+			// or 検索で "|" が入るとパイプとみなされるため
+			// Double quote for Escaping
 		}
 	} else {
 		return []string{}, errors.New("検索モードが設定されていません。 Content or File")
@@ -113,7 +116,7 @@ func (s *Search) Grep(opt []string) ([]string, error) {
 			return []string{}, errors.New("タイムアウトしました。検索条件を変えてください。")
 		}
 	} else if s.Mode == "File" {
-		command := exec.Command("sh", "-c", "/usr/bin/rg "+strings.Join(opt, " "))
+		command := exec.Command("sh", "-c", s.Exf+" "+strings.Join(opt, " "))
 		out, err = command.CombinedOutput()
 	}
 	if err != nil {

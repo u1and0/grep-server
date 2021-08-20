@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,11 +20,9 @@ const (
 	VERSION = "1.0.3r"
 	// EXE : Search command
 	EXE = "/usr/bin/rga"
+	EXF = "/usr/bin/rg"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
-	// PORT : http.ListenAndServe port number
-	// ポートもコマンドから設定できるように
-	PORT = ":8080"
 )
 
 var (
@@ -34,6 +33,7 @@ var (
 	encoding     string
 	pathSplitWin bool
 	timeout      time.Duration
+	port         int
 )
 
 func main() {
@@ -55,6 +55,8 @@ func main() {
 	flag.BoolVar(&pathSplitWin, "sep", false, "OS path split windows backslash")
 	flag.DurationVar(&timeout, "t", 10*time.Second, "Search method timeout")
 	flag.DurationVar(&timeout, "timeout", 10*time.Second, "Search method timeout")
+	flag.IntVar(&port, "port", 8080, "http.ListenAndServe port number. Default access to http://localhost:8080/")
+	flag.IntVar(&port, "p", 8080, "http.ListenAndServe port number. Default access to http://localhost:8080/")
 	flag.Parse()
 	// Show version
 	if showVersion {
@@ -73,7 +75,8 @@ func main() {
 	// HTTP response
 	http.HandleFunc("/", showInit)        // top page
 	http.HandleFunc("/search", addResult) // search result
-	http.ListenAndServe(PORT, nil)
+	ps := ":" + strconv.Itoa(port)        // => :8080
+	http.ListenAndServe(ps, nil)
 }
 
 // showInit : Top page html
@@ -101,6 +104,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		CmdKeyword:   "",
 		CmdPath:      r.FormValue("directory-path"), // 初期値はPathと同じ
 		Exe:          EXE,
+		Exf:          EXF,
 		Root:         root,
 		Trim:         trim, // Path prefix trim
 		PathSplitWin: pathSplitWin,
