@@ -149,7 +149,11 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		// 検索結果出力
 		fmt.Fprintf(w, `<table>`)
 		for _, h := range result.Contents {
-			fmt.Fprintf(w, `<tr> <td>%s</td> </tr>`, h)
+			if h.File != "" {
+				fmt.Fprintf(w, `<tr> <td>%s%s</td> </tr>`, h.File, h.Dir)
+			} else {
+				fmt.Fprintf(w, `<tr> <td>%s</td> </tr>`, h.Highlight)
+			}
 		}
 		fmt.Fprintf(w, `</table>`)
 		log.Printf(
