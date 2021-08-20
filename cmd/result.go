@@ -1,7 +1,6 @@
 package cmd
 
 import (
-	"html"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -47,9 +46,9 @@ func highlightString(s string, words ...string) string {
 	for _, w := range words {
 		re := regexp.MustCompile(`((?i)` + w + `)`) // ((?i)word)
 		found := re.FindString(s)
+		color := "style=\"background-color:#FFCC00;\">"
 		if found != "" {
-			s = strings.ReplaceAll(s, found,
-				"<span style=\"background-color:#FFCC00;\">"+found+"</span>")
+			s = strings.ReplaceAll(s, found, "<span "+color+found+"</span>")
 		}
 	}
 	return s
@@ -65,14 +64,11 @@ func (r *Result) HTMLContents(key string) Result {
 	)
 	for _, s := range r.Out[:l] {
 		if x.MatchString(s) { // '/'から始まるときはfilename
-			h = r.highlightFilename(s)
-		} else { // '/'から始まらないときはfile contents
-			h = highlightString(
-				html.EscapeString(s),
-				// メタ文字含まない検索文字のみhighlight
-				strings.Fields(key)...,
-			)
+			s = r.highlightFilename(s)
 		}
+		// } else { // '/'から始まらないときはfile contents
+		h = highlightString(s, strings.Fields(key)...)
+		// }
 		r.Contents = append(r.Contents, h)
 	}
 	r.Stats = r.Out[l:] // 最後の8行はrga --stats の統計情報

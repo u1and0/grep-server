@@ -16,12 +16,13 @@ import (
 
 const (
 	// VERSION : version
-	VERSION = "1.0.3"
+	VERSION = "1.0.3r"
 	// EXE : Search command
 	EXE = "/usr/bin/rga"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
 	// PORT : http.ListenAndServe port number
+	// ポートもコマンドから設定できるように
 	PORT = ":8080"
 )
 
@@ -140,10 +141,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 			fmt.Printf("[DEBUG] result struct: %+v\n", result)
 		}
 		fmt.Fprintf(w, "<h4>")
+		// Stats 出力
 		for _, h := range result.Stats {
 			fmt.Fprintf(w, "%s<br>", h)
 		}
 		fmt.Fprintf(w, "</h4>")
+		// 検索結果出力
 		fmt.Fprintf(w, `<table>`)
 		for _, h := range result.Contents {
 			fmt.Fprintf(w, `<tr> <td>%s</td> </tr>`, h)

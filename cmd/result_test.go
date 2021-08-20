@@ -35,12 +35,12 @@ func Test_highlightString(t *testing.T) {
 func TestResult_HTMLContents(t *testing.T) {
 	test := []string{"/home/test/path", "this is a test word", "0", "1", "2", "3", "4", "5", "6", "7"}
 	r := Result{Out: test}
-	key := "is word"
+	key := "test word"
 	actual := r.HTMLContents(key)
 	expected := Result{
 		Contents: []string{
-			r.highlightFilename(test[0]),
-			highlightString(test[1], "is", "word"),
+			highlightString(r.highlightFilename(test[0]), "test", "word"),
+			highlightString(test[1], "test", "word"),
 		},
 	}
 	if actual.Contents[0] != expected.Contents[0] { // Filename test

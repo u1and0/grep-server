@@ -78,16 +78,14 @@ func (s *Search) CommandGen() ([]string, error) {
 		command = []string{
 			"--files",
 			"--max-depth", s.Depth,
+			s.CmdPath,
 			"|",
 			"/usr/bin/rg",
 			"--color", "never",
 			"--smart-case",
 			// "--ignore-case",
 			"--stats",
-			"--encoding", "UTF-8",
-
 			s.CmdKeyword,
-			s.CmdPath,
 		}
 	} else {
 		return []string{}, errors.New("検索モードが設定されていません。 Content or File")
