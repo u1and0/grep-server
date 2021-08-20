@@ -62,7 +62,8 @@ func main() {
 	if showVersion {
 		fmt.Println("grep-server", VERSION)
 		rgaVersion, _ := exec.Command(EXE, "--version").Output()
-		fmt.Println(string(rgaVersion))
+		rgVersion, _ := exec.Command(EXF, "--version").Output()
+		fmt.Println(string(rgaVersion), string(rgVersion))
 		return // versionを表示して終了
 	}
 	// Log setting
