@@ -12,10 +12,11 @@ RUN sudo -u u1and0 yay -Syu --noconfirm --afterclean --removemake --save \
 WORKDIR /go/src/github.com/u1and0/grep-server
 COPY main.go .
 COPY go.mod .
+COPY go.sum .
 COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
 
-FROM archlinux/base as runnner
+FROM archlinux as runnner
 COPY --from=builder /usr/bin /usr/bin
 COPY --from=builder /lib /lib
 
