@@ -20,7 +20,7 @@ const (
 	VERSION = "2.0.0"
 	// EXE : Search command ripgrep-all
 	EXE = "/usr/bin/rga"
-	// EXE : Search command ripgrep
+	// EXF : Search command ripgrep
 	EXF = "/usr/bin/rg"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
@@ -139,7 +139,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 
 	/* コマンド作成 */
 	c, err := search.CommandGen()
-	if search.Debug {
+	if debug {
 		fmt.Printf("[DEBUG] options: %v\n", c)
 	}
 	if err != nil { // Error
@@ -154,7 +154,12 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	if debug {
 		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
-	if err != nil { // Error
+	if fmt.Sprintf("%s", err) == "exit status 1" {
+		fmt.Fprintf(w, `<h4> %s </h4>`, "検索がマッチしませんでした。")
+		log.Errorf(
+			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			err, search.Keyword, search.Path)
+	} else if err != nil { // Error
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
 		log.Errorf(
 			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
