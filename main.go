@@ -145,8 +145,9 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	if err != nil { // Error
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
 		log.Errorf(
-			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]",
 			err, search.Keyword, search.Path)
+		return
 	}
 
 	/* 検索結果表示 */
@@ -155,7 +156,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Printf("[DEBUG] result: %+v\n", outstr)
 	}
 	if fmt.Sprintf("%s", err) == "exit status 1" {
-		fmt.Fprintf(w, `<h4> %s </h4>`, "検索がマッチしませんでした。")
+		fmt.Fprintf(w, `<h4> %s </h4>`, "検索結果がありません。")
 		log.Errorf(
 			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
 			err, search.Keyword, search.Path)
@@ -169,7 +170,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		ss := strings.Fields(search.Keyword)
 		result = result.HTMLContents(ss)
 		if debug {
-			log.Debugf("result struct: %+v\n", result)
+			log.Debugf("result struct: %+v", result)
 		}
 		fmt.Fprintf(w, "<h4>")
 		// Stats 出力
