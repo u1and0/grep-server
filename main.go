@@ -3,8 +3,6 @@ package main
 import (
 	"flag"
 	"fmt"
-	"io"
-	"log"
 	"net/http"
 	"os"
 	"os/exec"
@@ -13,13 +11,16 @@ import (
 	"time"
 
 	cmd "grep-server/cmd"
+
+	"github.com/op/go-logging"
 )
 
 const (
 	// VERSION : version
-	VERSION = "1.0.3r"
-	// EXE : Search command
+	VERSION = "2.0.0"
+	// EXE : Search command ripgrep-all
 	EXE = "/usr/bin/rga"
+	// EXE : Search command ripgrep
 	EXF = "/usr/bin/rg"
 	// LOGFILE : 検索条件 / マッチファイル数 / マッチ行数 / 検索時間を記録するファイル
 	LOGFILE = "/var/log/grep-server.log"
@@ -34,13 +35,10 @@ var (
 	pathSplitWin bool
 	timeout      time.Duration
 	port         int
+	log          = logging.MustGetLogger("main")
 )
 
 func main() {
-	// Command check
-	if _, err := exec.LookPath(EXE); err != nil {
-		log.Fatalf("[ERROR] %s", err.Error())
-	}
 	// Parse flags
 	flag.BoolVar(&showVersion, "v", false, "show version")
 	flag.BoolVar(&showVersion, "version", false, "show version")
@@ -68,16 +66,35 @@ func main() {
 	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatalf("[ERROR] %s", err.Error())
-	}
 	defer logfile.Close()
-	log.SetOutput(io.MultiWriter(logfile, os.Stdout))
+	setLogger(logfile) // log.XXX()を使うものはここより後に書く
+	if err != nil {
+		log.Panicf("%s", err.Error())
+	}
+
+	// Command check
+	if _, err := exec.LookPath(EXE); err != nil {
+		log.Panicf("%s", err.Error())
+	}
+
 	// HTTP response
 	http.HandleFunc("/", showInit)        // top page
 	http.HandleFunc("/search", addResult) // search result
-	ps := ":" + strconv.Itoa(port)        // => :8080
-	http.ListenAndServe(ps, nil)
+	pt := ":" + strconv.Itoa(port)        // => :8080
+	log.Infof("Server open.")
+	http.ListenAndServe(pt, nil)
+}
+
+// setLogger is printing out log message to STDOUT and LOGFILE
+func setLogger(f *os.File) {
+	var format = logging.MustStringFormatter(
+		`%{color}[%{level:.6s}] ▶ %{time:2006-01-02 15:04:05} %{shortfile} %{message} %{color:reset}`,
+	)
+	backend1 := logging.NewLogBackend(os.Stdout, "", 0)
+	backend2 := logging.NewLogBackend(f, "", 0)
+	backend1Formatter := logging.NewBackendFormatter(backend1, format)
+	backend2Formatter := logging.NewBackendFormatter(backend2, format)
+	logging.SetBackend(backend1Formatter, backend2Formatter)
 }
 
 // showInit : Top page html
@@ -127,16 +144,19 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 	}
 	if err != nil { // Error
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
-		log.Printf(
-			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
+		log.Errorf(
+			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
 			err, search.Keyword, search.Path)
 	}
 
 	/* 検索結果表示 */
 	outstr, err := search.Grep(c)
+	if debug {
+		fmt.Printf("[DEBUG] result: %+v\n", outstr)
+	}
 	if err != nil { // Error
 		fmt.Fprintf(w, `<h4> %s </h4>`, err)
-		log.Printf(
+		log.Errorf(
 			"[ERROR] %s Keyword: [ %-30s ] Path: [ %-50s ]\n",
 			err, search.Keyword, search.Path)
 	} else { // Success
@@ -144,7 +164,7 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		ss := strings.Fields(search.Keyword)
 		result = result.HTMLContents(ss)
 		if debug {
-			fmt.Printf("[DEBUG] result struct: %+v\n", result)
+			log.Debugf("result struct: %+v\n", result)
 		}
 		fmt.Fprintf(w, "<h4>")
 		// Stats 出力
@@ -156,13 +176,13 @@ func addResult(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `<table>`)
 		for _, h := range result.Contents {
 			if h.File != "" {
-				fmt.Fprintf(w, `<tr> <td>%s%s</td> </tr>`, h.File, h.Dir)
+				fmt.Fprintf(w, `<tr> <td>%s %s</td> </tr>`, h.File, h.Dir)
 			} else {
 				fmt.Fprintf(w, `<tr> <td>%s</td> </tr>`, h.Highlight)
 			}
 		}
 		fmt.Fprintf(w, `</table>`)
-		log.Printf(
+		log.Noticef(
 			"%s Keyword: [ %-30s ] Path: [ %-50s ]\n",
 			strings.Join(result.Stats, " "), search.Keyword, search.Path)
 	}

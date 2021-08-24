@@ -118,14 +118,11 @@ func (s *Search) Grep(opt []string) ([]string, error) {
 	} else if s.Mode == "File" {
 		command := exec.Command("sh", "-c", s.Exf+" "+strings.Join(opt, " "))
 		out, err = command.CombinedOutput()
-	}
-	if err != nil {
-		log.Printf("[ERROR] %s", err)
+	} else {
+		log.Fatalf("[ERROR] an error format selected %s."+
+			" Must be Content/File either.", s.Mode)
 	}
 	outstr := splitOutByte(out)
-	if s.Debug {
-		fmt.Printf("[DEBUG] result: %+v\n", outstr)
-	}
 	return outstr, err
 }
 
@@ -211,7 +208,7 @@ func (s *Search) HTMLClause() string {
 				 <select name="encoding"
 					id="encoding"
 					size="1"
-					title="文字エンコードを指定します。">
+					title="文字エンコードを指定します。結果が文字化けするときはリストから適宜選択してください。">
 				` +
 			func() string { // 文字エンコーディングはデフォルトUTF-8
 				n := `<option value="UTF-8">UTF-8</option>
