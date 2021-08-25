@@ -3,15 +3,14 @@
 # $ docker run -d --rm u1and0/grep-server [options]
 # ```
 
-FROM golang:1.17.0-alpine3.14 AS builder
-RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz \
-        /bin/sh -c apk \
-        add \
+FROM pandoc/core AS builder
+RUN apk add --no-cache \
         curl \
         ffmpeg \
         poppler-utils \
-        ripgrep &&\
-    apk add --no-cache -X http://dl-cdn.alpinelinux.org/alpine/edge/testing pandoc &&\
+        ripgrep \
+        go
+RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz &&\
     curl -LO $RGA_BINARY &&\
     tar -xvf "$(basename $RGA_BINARY)" &&\
     cp ripgrep_all*/rga* /usr/local/bin
@@ -28,7 +27,7 @@ COPY go.sum .
 COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
 
-FROM apline as runner
+FROM alpine as runner
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin /usr/bin
 COPY --from=builder /lib /lib
