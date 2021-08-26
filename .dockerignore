@@ -1,6 +1,8 @@
 README.md
-grep-server
+grep-server*
 log
 old
 tags
 processor
+/.git/
+/test/
