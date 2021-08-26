@@ -12,17 +12,18 @@ COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
 
 FROM alpine:latest AS runner
+COPY --from=pandoc/core:latest /usr/local/bin /usr/local/bin
+COPY --from=builder /usr/bin /usr/bin
 RUN apk add --upgrade --no-cache \
         curl \
         ffmpeg \
         poppler-utils \
-        ripgrep
+        ripgrep \
+        lua5.3-libs  # Needed for pandoc
 RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz &&\
     curl -L $RGA_BINARY | tar -xvzf- &&\
     cp ripgrep_all*/rga* /usr/bin &&\
     rm -rf ripgrep_all*
-COPY --from=pandoc/core:latest /usr/local/bin /usr/local/bin
-COPY --from=builder /usr/bin /usr/bin
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/grep-server"]
