@@ -11,7 +11,7 @@ COPY go.sum .
 COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
 
-FROM alpine:latest AS runner
+FROM alpine:3.14 AS runner
 COPY --from=pandoc/core:latest /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin /usr/bin
 RUN apk add --upgrade --no-cache \
