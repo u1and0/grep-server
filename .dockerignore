@@ -1,7 +1,8 @@
 README.md
-go.sum
-grep-server
+grep-server*
 log
 old
 tags
-test
+processor
+/.git/
+/test/

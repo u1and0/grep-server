@@ -18,19 +18,26 @@ type Search struct {
 	AndOr        string        // and / or の検索メソッド
 	Depth        string        // 検索対象パスから検索する階層数
 	Encoding     string        // ファイルエンコード
+	Mode         string        // 検索モード Content ファイル内容 / File ファイル名
 	CmdKeyword   string        // rgaコマンドに渡す and / or padding した検索キーワード
 	CmdPath      string        // rgaコマンドに渡す'/'に正規化し、ルートパスを省いたパス
 	Exe          string        // => /usr/bin/rga
-	Root         string        // trimするパスのプレフィックス
+	Exf          string        // => /usr/bin/rg
+	Root         string        // 追加するパスのプレフィックス
+	Trim         string        // 取り除くパスのプレフィックス
 	PathSplitWin bool          // Windows path sepに変更する
 	Debug        bool          // Debug modeに変更する
 	Timeout      time.Duration // rga検索コマンドのタイムアウト
 }
 
-// Grep : rga検索の結果をstring sliceにして返す
-func (s *Search) Grep() ([]string, error) {
+// CommandGen : rgaオプション設定
+func (s *Search) CommandGen() ([]string, error) {
+	var command []string
 	if s.Root != "" {
 		s.CmdPath = strings.TrimPrefix(s.CmdPath, s.Root)
+	}
+	if s.Trim != "" {
+		s.CmdPath = s.Trim + s.CmdPath
 	}
 	if s.PathSplitWin {
 		// filepath.ToSlash(Path) <= Windows版Goでしか有効でない
@@ -51,46 +58,71 @@ func (s *Search) Grep() ([]string, error) {
 	}
 
 	// コマンド生成
-	opt := []string{ // rga/rg options
-		"--line-number",
-		"--max-columns", "160",
-		"--max-columns-preview",
-		"--heading",
-		"--color", "never",
-		"--no-binary",
-		"--smart-case",
-		// "--ignore-case",
-		"--stats",
-		"--max-depth", s.Depth,
-		"--encoding", s.Encoding,
+	if s.Mode == "Content" {
+		command = []string{
+			"--line-number",
+			"--max-columns", "160",
+			"--max-columns-preview",
+			"--heading",
+			"--color", "never",
+			"--no-binary",
+			"--smart-case",
+			// "--ignore-case",
+			"--stats",
+			"--max-depth", s.Depth,
+			"--encoding", s.Encoding,
 
-		s.CmdKeyword,
-		s.CmdPath,
+			s.CmdKeyword,
+			s.CmdPath,
+		}
+	} else if s.Mode == "File" {
+		command = []string{
+			"--files",
+			"--max-depth", s.Depth,
+			s.CmdPath,
+			"|",
+			s.Exf,
+			"--color", "never",
+			"--smart-case",
+			// "--ignore-case",
+			"--stats",
+			fmt.Sprintf("\"%s\"", s.CmdKeyword),
+			// or 検索で "|" が入るとパイプとみなされるため
+			// Double quote for Escaping
+		}
+	} else {
+		return []string{}, errors.New("検索モードが設定されていません。 Content or File")
 	}
-	if s.Debug {
-		fmt.Printf("[DEBUG] options: %v\n", opt)
-	}
+	return command, nil
+}
 
-	// Create a new context and add a timeout to it
-	ctx, cancel := context.WithTimeout(context.Background(), s.Timeout)
-	defer cancel() // The cancel should be deferred so resources are cleaned up
-
+// Grep : rga検索の結果をstring sliceにして返す
+func (s *Search) Grep(opt []string) ([]string, error) {
 	// File contents search by `rga` command
-	var out []byte
-	out, err := exec.CommandContext(ctx, s.Exe, opt...).Output()
-	// We want to check the context error to see if the timeout was executed.
-	// The error returned by cmd.Output() will be OS specific based on what
-	// happens when a process is killed.
-	if ctx.Err() == context.DeadlineExceeded {
-		return []string{}, errors.New("タイムアウトしました。検索条件を変えてください。")
-	}
-	if err != nil {
-		log.Printf("[ERROR] %s", err)
+	var (
+		out []byte
+		err error
+	)
+	if s.Mode == "Content" {
+		// Create a new context and add a timeout to it
+		ctx, cancel := context.WithTimeout(context.Background(), s.Timeout)
+		defer cancel() // The cancel should be deferred so resources are cleaned up
+		command := exec.CommandContext(ctx, s.Exe, opt...)
+		out, err = command.Output()
+		// We want to check the context error to see if the timeout was executed.
+		// The error returned by cmd.Output() will be OS specific based on what
+		// happens when a process is killed.
+		if ctx.Err() == context.DeadlineExceeded {
+			return []string{}, errors.New("タイムアウトしました。検索条件を変えてください。")
+		}
+	} else if s.Mode == "File" {
+		command := exec.Command("sh", "-c", s.Exf+" "+strings.Join(opt, " "))
+		out, err = command.CombinedOutput()
+	} else {
+		log.Fatalf("[ERROR] an error format selected %s."+
+			" Must be Content/File either.", s.Mode)
 	}
 	outstr := splitOutByte(out)
-	if s.Debug {
-		fmt.Printf("[DEBUG] result: %+v\n", outstr)
-	}
 	return outstr, err
 }
 
@@ -107,6 +139,7 @@ func (s *Search) HTMLClause() string {
 			</head>
 			  <body>
 			    <form method="get" action="/search">
+
 				  <!-- directory -->
 				  <input type="text"
 					  placeholder=` + pathtext + `
@@ -126,6 +159,19 @@ func (s *Search) HTMLClause() string {
 					  size="90"
 					  title=` + keytext + `>
 
+				   <!-- mode -->
+				   <select name="mode"
+					id="mode"
+					size="1"
+					title="Mode: 検索モードを指定します。ファイル内検索したいとき=>'Content'を選択, ファイル名検索をしたいとき=>'File'を選択してください。">
+					` +
+			func() string { // 検索モードは何もselectされていない(デフォルトは一番上のContentになる)
+				n := `<option value="Content">Content</option>
+					<option value="File">File</option>`
+				return strings.Replace(n, ">"+s.Mode, " selected>"+s.Mode, 1)
+			}() + `
+				  </select>
+
 				   <!-- depth -->
 				   Lv
 				   <select name="depth"
@@ -142,6 +188,7 @@ func (s *Search) HTMLClause() string {
 				return strings.Replace(n, ">"+s.Depth, " selected>"+s.Depth, 1)
 			}() + `
 				  </select>
+
 				 <!-- and/or -->
 				 ` +
 			func() string { // and かor 選択されている方に"checked"をつける
@@ -156,11 +203,12 @@ func (s *Search) HTMLClause() string {
 					"\"andor-search\" checked=\"checked\">"+s.AndOr,
 					1)
 			}() + `
+
 				 <!-- encoding -->
 				 <select name="encoding"
 					id="encoding"
 					size="1"
-					title="文字エンコードを指定します。">
+					title="文字エンコードを指定します。結果が文字化けするときはリストから適宜選択してください。">
 				` +
 			func() string { // 文字エンコーディングはデフォルトUTF-8
 				n := `<option value="UTF-8">UTF-8</option>
