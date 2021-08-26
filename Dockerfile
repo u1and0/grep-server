@@ -11,7 +11,7 @@ COPY go.sum .
 COPY cmd/ cmd/
 RUN go build -o /usr/bin/grep-server
 
-FROM alpine:latest AS packages
+FROM alpine:latest AS runner
 RUN apk add --upgrade --no-cache \
         curl \
         ffmpeg \
@@ -21,15 +21,8 @@ RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/
     curl -LO $RGA_BINARY &&\
     tar -xvf "$(basename $RGA_BINARY)" &&\
     cp ripgrep_all*/rga* /usr/bin
-
-FROM alpine:latest
 COPY --from=pandoc/core:latest /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin /usr/bin
-COPY --from=packages /usr/bin /usr/bin
-COPY --from=packages /lib /lib
-
-# Why need it `apk upgrade`? but doesn't work unless do it.
-# RUN apk update && apk add --upgrade ripgrep
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/grep-server"]
