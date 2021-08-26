@@ -4,7 +4,7 @@
 # ```
 
 FROM pandoc/core AS builder
-RUN apk add --no-cache \
+RUN apk add --upgrade --no-cache \
         curl \
         ffmpeg \
         poppler-utils \
@@ -13,7 +13,7 @@ RUN apk add --no-cache \
 RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz &&\
     curl -LO $RGA_BINARY &&\
     tar -xvf "$(basename $RGA_BINARY)" &&\
-    cp ripgrep_all*/rga* /usr/local/bin
+    cp ripgrep_all*/rga* /usr/bin
 # RUN apt update && apt install -y build-essential pandoc poppler-utils ffmpeg ripgrep
 #
 # RUN apt update && apt install -y cargo
@@ -31,6 +31,8 @@ FROM alpine as runner
 COPY --from=builder /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin /usr/bin
 COPY --from=builder /lib /lib
+# Why need it `apk upgrade`? but doesn't work unless do it.
+RUN apk update && apk add --upgrade ripgrep
 
 EXPOSE 8080
 ENTRYPOINT ["/usr/bin/grep-server"]
