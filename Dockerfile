@@ -18,9 +18,9 @@ RUN apk add --upgrade --no-cache \
         poppler-utils \
         ripgrep
 RUN RGA_BINARY=https://github.com/phiresky/ripgrep-all/releases/download/v0.9.6/ripgrep_all-v0.9.6-x86_64-unknown-linux-musl.tar.gz &&\
-    curl -LO $RGA_BINARY &&\
-    tar -xvf "$(basename $RGA_BINARY)" &&\
-    cp ripgrep_all*/rga* /usr/bin
+    curl -L $RGA_BINARY | tar -xvzf- &&\
+    cp ripgrep_all*/rga* /usr/bin &&\
+    rm -rf ripgrep_all*
 COPY --from=pandoc/core:latest /usr/local/bin /usr/local/bin
 COPY --from=builder /usr/bin /usr/bin
 
