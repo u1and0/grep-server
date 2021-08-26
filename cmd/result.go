@@ -40,7 +40,7 @@ func (r *Result) highlightFilename(s string, words []string) (string, string) {
 	if s != "" {
 		s = strings.Replace(s, s,
 			"<a target=\"_blank\" href=\"file://"+s+"\">"+highlightString(s, words)+"</a>", 1)
-		dirpath = " <a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
+		dirpath = "<a href=\"file://" + dirpath + "\" title=\"<< クリックでフォルダに移動\"><<</a>"
 	}
 	return s, dirpath
 }

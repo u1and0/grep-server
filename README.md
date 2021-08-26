@@ -45,25 +45,33 @@ grepの高機能版[ripgrep-all](https://github.com/phiresky/ripgrep-all)を検�
 ```grep-server -h
 Usage of grep-server:
   -E string
-        Set default encoding (default "UTF-8")
+    	Set default encoding (default "UTF-8")
+  -T string
+    	DB trim prefix for directory path
   -debug
-        run as debug mode
+    	run as debug mode
   -encoding string
-        Set default encoding (default "UTF-8")
+    	Set default encoding (default "UTF-8")
+  -p int
+    	http.ListenAndServe port number. Default access to http://localhost:8080/ (default 8080)
+  -port int
+    	http.ListenAndServe port number. Default access to http://localhost:8080/ (default 8080)
   -r string
-        Append root directory path
+    	Append root directory path
   -root string
-        Append root directory path
-  -s    OS path split windows backslash
+    	Append root directory path
+  -s	OS path split windows backslash
   -sep
-        OS path split windows backslash
+    	OS path split windows backslash
   -t duration
-        Search method timeout (default 10s)
+    	Search method timeout (default 10s)
   -timeout duration
-        Search method timeout (default 10s)
-  -v    show version
+    	Search method timeout (default 10s)
+  -trim string
+    	DB trim prefix for directory path
+  -v	show version
   -version
-        show version
+    	show version
 ```
 
 ### 正規表現の例
@@ -87,6 +95,9 @@ table1: 正規表現の例
 * case sensitiveはsmart caseが有効です。
   * 小文字だけのキーワードに対しては大文字小文字を無視して検索します。
   * 大文字を含んだキーワードに対しては大文字小文字を区別して検索します。
+* 検索モードは、検索キーワードに基づいて検索する対象を選択します。
+  * Contentは**ファイルの内容**を検索します。
+  * Fileは**ファイル名**を検索します。
 * 検索階層数(Lv)を1〜5の間から選択します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。
   * 例えばLv: 2を選択したとき、指定ディレクトリから最大2階層下のファイルまでを検索対象ファイルとします。
 * and検索を行うかor検索を行うかをラジオボタンで選択します。
