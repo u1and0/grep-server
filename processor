@@ -1,0 +1,9 @@
+#!/bin/sh
+
+case "$1" in
+*.xls) exec xls2csv $1 ;;
+*.xlsx) exec xlsx2csv -a $1;;
+*.doc) exec catdoc;;
+*.eml) exec eml2txt $1 - ;;
+*) exec cat ;;
+esac

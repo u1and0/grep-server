@@ -3,3 +3,4 @@ grep-server
 log
 old
 tags
+/exampledir/*.eml
