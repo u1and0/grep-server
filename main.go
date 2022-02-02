@@ -12,12 +12,13 @@ import (
 
 	cmd "grep-server/cmd"
 
+	"github.com/gin-gonic/gin"
 	"github.com/op/go-logging"
 )
 
 const (
 	// VERSION : version
-	VERSION = "2.0.0"
+	VERSION = "2.0.0r"
 	// EXE : Search command ripgrep-all
 	EXE = "/usr/bin/rga"
 	// EXF : Search command ripgrep
@@ -66,23 +67,44 @@ func main() {
 	}
 	// Log setting
 	logfile, err := os.OpenFile(LOGFILE, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	defer logfile.Close()
-	setLogger(logfile) // log.XXX()を使うものはここより後に書く
 	if err != nil {
 		log.Panicf("%s", err.Error())
 	}
+	defer logfile.Close()
+	setLogger(logfile) // log.XXX()を使うものはここより後に書く
 
 	// Command check
 	if _, err := exec.LookPath(EXE); err != nil {
 		log.Panicf("%s", err.Error())
 	}
 
+	// Open server
+	route := gin.Default()
+	route.Static("/static", "./static")
+	route.LoadHTMLGlob("templates/*")
+
+	// Top page
+	route.GET("/", topPage)
+
+	// Result view
+	route.GET("/search", searchPage)
+
+	// API
+	// route.GET("/history", fetchHistory)
+	route.GET("/json", fetchJSON)
+
+	// Listen and serve on 0.0.0.0:8080
+	if err := route.Run(":" + strconv.Itoa(port)); err != nil { // => :8080
+		panic(err)
+	}
+	log.Infof("Server open localhost:%d", port)
+
 	// HTTP response
-	http.HandleFunc("/", showInit)        // top page
-	http.HandleFunc("/search", addResult) // search result
-	pt := ":" + strconv.Itoa(port)        // => :8080
-	log.Infof("Server open.")
-	http.ListenAndServe(pt, nil)
+	// http.HandleFunc("/", showInit)        // top page
+	// http.HandleFunc("/search", addResult) // search result
+	// pt := ":" + strconv.Itoa(port)        // => :8080
+	// log.Infof("Server open.")
+	// http.ListenAndServe(pt, nil)
 }
 
 // setLogger is printing out log message to STDOUT and LOGFILE
@@ -97,16 +119,27 @@ func setLogger(f *os.File) {
 	logging.SetBackend(backend1Formatter, backend2Formatter)
 }
 
-// showInit : Top page html
-func showInit(w http.ResponseWriter, r *http.Request) {
-	// オプションのデフォルト設定
-	// 検索語、ディレクトリは空
-	// 検索階層は何もselectされていない(デフォルトは一番上の1になる)
-	s := cmd.Search{Depth: "1", AndOr: "and", Encoding: encoding, Mode: "Content"}
-	if debug {
-		fmt.Printf("[DEBUG] search struct: %+v\n", s)
-	}
-	fmt.Fprintf(w, s.HTMLClause())
+// topPage : Top page html
+func topPage(c *gin.Context) {
+	// この辺の値はJavaScriptでJSONを処理させる
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"title":    "",
+		"path":     "",
+		"keyword":  "",
+		"depth":    "1",
+		"andor":    "and",
+		"encoding": encoding,
+		"mode":     "Content",
+	})
+}
+
+func searchPage(c *gin.Context) {
+	q := c.Query("q")
+	path := c.Query("path")
+	c.HTML(http.StatusOK, "index.tmpl", gin.H{
+		"path":  path,
+		"query": q,
+	})
 }
 
 // addResult : Print ripgrep-all result as html contents

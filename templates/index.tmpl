@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charaset=utf-8">
+  <title>Grep Server {{ .keyword }} {{ .path }} </title>
+</head>
+  <body>
+    <form method="get" action="/search">
+
+    <!-- directory -->
+    <input type="text"
+      placeholder="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"
+      name="directory-path"
+      id="directory-path"
+      value={{ .path }}
+      size="140"
+      title="検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)">
+    <a href=https://github.com/u1and0/grep-server/blob/master/README.md>Help</a>
+    <br>
+
+    <!-- file -->
+    <input type="text"
+      placeholder="検索キーワードをスペース区切りで入力してください"
+      name="query"
+      value={{ .keyword }}
+      size="90"
+      title="検索キーワードをスペース区切りで入力してください">
+
+    <!-- mode -->
+    <select name="mode" id="mode" size="1"
+    title="Mode: 検索モードを指定します。ファイル内検索したいとき=>'Content'を選択, ファイル名検索をしたいとき=>'File'を選択してください。">
+      <option value="Content" selected>Content</option>
+      <option value="File">File</option>
+    </select>
+
+     <!-- depth -->
+     Lv
+     <select name="depth"
+      id="depth"
+      size="1"
+      title="Lv: 検索階層数を指定します。数字を増やすと検索速度は落ちますがマッチする可能性が上がります。">
+      <option value="1" selected>1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+
+    <!-- and/or -->
+    <input type="radio" value="and"
+      title="スペース区切りをandとみなすかorとみなすか選択します"
+      name="andor-search" checked>and
+    <input type="radio" value="or"
+      title="スペース区切りをandとみなすかorとみなすか選択します"
+      name="andor-search">or
+
+    <!-- encoding -->
+    <select name="encoding"
+      id="encoding"
+      size="1"
+      title="文字エンコードを指定します。結果が文字化けするときはリストから適宜選択してください。">
+      <option value="UTF-8">UTF-8</option>
+      <option value="SHIFT-JIS">SHIFT-JIS</option>
+      <option value="EUC-JP">EUC-JP</option>
+      <option value="ISO-2022-JP">ISO-2022-JP</option>
+    </select>
+
+      <input type="submit" name="submit" value="Search">
+    </form>

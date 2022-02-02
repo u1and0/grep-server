@@ -128,8 +128,8 @@ func (s *Search) Grep(opt []string) ([]string, error) {
 
 // HTMLClause : ページに表示する情報
 func (s *Search) HTMLClause() string {
-	pathtext := `"検索対象フォルダのフルパスを入力してください(ex:/usr/bin ex:\\gr.net\ShareUsers\User\Personal)"`
-	keytext := `"検索キーワードをスペース区切りで入力してください"`
+	pathtext := ``
+	keytext := ``
 	return fmt.Sprintf(
 		`<!DOCTYPE html>
 			<html>
